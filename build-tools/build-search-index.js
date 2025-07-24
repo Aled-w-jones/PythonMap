@@ -72,11 +72,12 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                     const readmePath = join(fullPath, 'README.md');
                     try {
                         const readmeContent = await readFile(readmePath, 'utf-8');
+                        const processedReadmeContent = marked(readmeContent);
                         searchIndex.push({
                             type: 'readme',
                             title: `README - ${item}`,
                             description: `README file for ${item} directory`,
-                            content: readmeContent,
+                            content: processedReadmeContent,
                             filePath: readmePath,
                             url: `/browser/${relativePath}`
                         });

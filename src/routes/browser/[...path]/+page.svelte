@@ -151,10 +151,22 @@
 	async function findReadmeForFile(searchIndex, fileItem) {
 		// Find README files in the same directory
 		const fileDir = fileItem.filePath.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
-		const readmeItem = searchIndex.find(item => 
+		
+		// Look for the processed HTML version (type: 'readme') first
+		let readmeItem = searchIndex.find(item => 
 			item.type === 'readme' && 
 			item.filePath.replace(/\\/g, '/').includes(fileDir)
 		);
+		
+		// If no processed version found, look for raw markdown and process it
+		if (!readmeItem) {
+			readmeItem = searchIndex.find(item => 
+				item.type === 'markdown' && 
+				item.filePath.replace(/\\/g, '/').includes(fileDir) &&
+				item.filePath.toLowerCase().includes('readme')
+			);
+		}
+		
 		return readmeItem ? readmeItem.content : null;
 	}
 	
@@ -256,7 +268,8 @@
 		// Only show README content for specific directories that actually have a README
 		// The root scripts directory should not show any README content
 		if (dirPath !== 'scripts' && dirPath !== '') {
-			const readmeItem = searchIndex.find(item => {
+			// Look for the processed HTML version (type: 'readme') first
+			let readmeItem = searchIndex.find(item => {
 				if (item.type === 'readme') {
 					const normalizedPath = item.filePath.replace(/\\/g, '/');
 					const readmeDir = normalizedPath.replace('scripts/', '').replace('/README.md', '');
@@ -266,6 +279,19 @@
 				}
 				return false;
 			});
+			
+			// If no processed version found, look for raw markdown
+			if (!readmeItem) {
+				readmeItem = searchIndex.find(item => {
+					if (item.type === 'markdown' && item.filePath.toLowerCase().includes('readme')) {
+						const normalizedPath = item.filePath.replace(/\\/g, '/');
+						const readmeDir = normalizedPath.replace('scripts/', '').replace('/README.md', '');
+						
+						return readmeDir === dirPath;
+					}
+					return false;
+				});
+			}
 			
 			if (readmeItem) {
 				readmeContent = readmeItem.content;
