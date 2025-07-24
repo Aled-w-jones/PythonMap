@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
 	import javascript from 'highlight.js/lib/languages/javascript';
@@ -9,7 +10,10 @@
 	import markdown from 'highlight.js/lib/languages/markdown';
 	import BrowserSearchPanel from '$lib/components/BrowserSearchPanel.svelte';
 	
-	export let data;
+	// Client-side data loading
+	let data = null;
+	let loading = true;
+	let error = null;
 	
 	let codeElement;
 	let directoryMinimized = false;
@@ -19,20 +23,22 @@
 	let isPanelOpen = true;
 	
 	// Check if this file has README.md for split view
-	$: isFileWithReadme = data.type === 'file' && 
-		data.readmeContent;
+	$: isFileWithReadme = data?.type === 'file' && 
+		data?.readmeContent;
 	
 	// Debug logging
-	$: console.log('File data:', {
-		type: data.type,
-		name: data.name,
-		hasReadmeContent: !!data.readmeContent,
-		isFileWithReadme,
-		readmeContentLength: data.readmeContent?.length
-	});
+	$: if (data) {
+		console.log('File data:', {
+			type: data.type,
+			name: data.name,
+			hasReadmeContent: !!data.readmeContent,
+			isFileWithReadme,
+			readmeContentLength: data.readmeContent?.length
+		});
+	}
 		
 	// Check if this is a README.md file specifically (for different rendering)
-	$: isReadmeFile = data.type === 'file' && data.name.toLowerCase() === 'readme.md';
+	$: isReadmeFile = data?.type === 'file' && data?.name?.toLowerCase() === 'readme.md';
 	
 	// Register languages
 	hljs.registerLanguage('python', python);
@@ -40,7 +46,49 @@
 	hljs.registerLanguage('json', json);
 	hljs.registerLanguage('markdown', markdown);
 	
-	onMount(() => {
+	onMount(async () => {
+		const requestedPath = $page.params.path || '';
+		
+		try {
+			// Load search index to get file information
+			const searchResponse = await fetch(`${base}/data/search_index.json`);
+			if (!searchResponse.ok) throw new Error('Failed to load search index');
+			
+			const searchIndex = await searchResponse.json();
+			
+			if (!requestedPath || requestedPath === 'scripts') {
+				// Show scripts directory listing
+				data = await buildDirectoryListing(searchIndex, 'scripts');
+			} else {
+				// Try to find specific file or directory
+				const item = findItemInSearchIndex(searchIndex, requestedPath);
+				if (item) {
+					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript') {
+						// File view
+						data = {
+							type: 'file',
+							path: requestedPath,
+							content: item.content,
+							extension: getExtensionFromPath(item.filePath),
+							name: item.title,
+							breadcrumbs: requestedPath.split('/').filter(Boolean),
+							readmeContent: await findReadmeForFile(searchIndex, item)
+						};
+					} else {
+						// Directory view
+						data = await buildDirectoryListing(searchIndex, requestedPath);
+					}
+				} else {
+					throw new Error('Path not found');
+				}
+			}
+		} catch (err) {
+			console.error('Error loading browser data:', err);
+			error = 'Failed to load browser data';
+		} finally {
+			loading = false;
+		}
+		
 		// Load panel state from localStorage
 		if (browser) {
 			const savedState = localStorage.getItem('browserSearchPanelOpen');
@@ -51,14 +99,139 @@
 		
 		// Use a short delay to ensure the element is fully rendered
 		setTimeout(() => {
-			if (codeElement && data.type === 'file') {
+			if (codeElement && data?.type === 'file') {
 				hljs.highlightElement(codeElement);
 			}
-		}, 0);
+		}, 100);
 	});
 	
+	// Helper functions
+	function findItemInSearchIndex(searchIndex, path) {
+		return searchIndex.find(item => {
+			if (item.filePath) {
+				const normalizedPath = item.filePath.replace(/\\/g, '/').replace('scripts/', '');
+				return normalizedPath === path || 
+					   normalizedPath === path + '.py' ||
+					   normalizedPath === path + '.md' ||
+					   item.title.toLowerCase() === path.toLowerCase();
+			}
+			return false;
+		});
+	}
+	
+	function getExtensionFromPath(filePath) {
+		return filePath.includes('.') ? filePath.split('.').pop() : undefined;
+	}
+	
+	async function findReadmeForFile(searchIndex, fileItem) {
+		// Find README files in the same directory
+		const fileDir = fileItem.filePath.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
+		const readmeItem = searchIndex.find(item => 
+			item.type === 'readme' && 
+			item.filePath.replace(/\\/g, '/').includes(fileDir)
+		);
+		return readmeItem ? readmeItem.content : null;
+	}
+	
+	async function buildDirectoryListing(searchIndex, dirPath) {
+		const items = [];
+		const seenItems = new Set();
+		
+		// Find all items in this directory
+		for (const item of searchIndex) {
+			if (item.filePath) {
+				const normalizedPath = item.filePath.replace(/\\/g, '/');
+				const relativePath = normalizedPath.replace('scripts/', '');
+				const pathParts = relativePath.split('/');
+				
+				if (dirPath === 'scripts') {
+					// Root scripts directory
+					if (pathParts.length === 1) {
+						// Direct file in scripts
+						if (!seenItems.has(item.title)) {
+							items.push({
+								name: item.title,
+								type: 'file',
+								path: relativePath,
+								extension: getExtensionFromPath(item.filePath)
+							});
+							seenItems.add(item.title);
+						}
+					} else if (pathParts.length > 1) {
+						// File in subdirectory - add the subdirectory
+						const subDir = pathParts[0];
+						if (!seenItems.has(subDir)) {
+							items.push({
+								name: subDir,
+								type: 'directory',
+								path: subDir
+							});
+							seenItems.add(subDir);
+						}
+					}
+				} else {
+					// Specific subdirectory
+					if (relativePath.startsWith(dirPath + '/')) {
+						const remainingPath = relativePath.replace(dirPath + '/', '');
+						const remainingParts = remainingPath.split('/');
+						
+						if (remainingParts.length === 1) {
+							// Direct file in this directory
+							if (!seenItems.has(item.title)) {
+								items.push({
+									name: item.title,
+									type: 'file',
+									path: relativePath,
+									extension: getExtensionFromPath(item.filePath)
+								});
+								seenItems.add(item.title);
+							}
+						} else {
+							// File in subdirectory
+							const subDir = remainingParts[0];
+							if (!seenItems.has(subDir)) {
+								items.push({
+									name: subDir,
+									type: 'directory',
+									path: dirPath + '/' + subDir
+								});
+								seenItems.add(subDir);
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Sort items: directories first, then files
+		items.sort((a, b) => {
+			if (a.type !== b.type) {
+				return a.type === 'directory' ? -1 : 1;
+			}
+			return a.name.localeCompare(b.name);
+		});
+		
+		// Find README for this directory
+		let readmeContent = null;
+		const readmeItem = searchIndex.find(item => 
+			item.type === 'readme' && 
+			item.filePath.replace(/\\/g, '/').includes(dirPath)
+		);
+		if (readmeItem) {
+			readmeContent = readmeItem.content;
+		}
+		
+		return {
+			type: 'directory',
+			path: dirPath,
+			items,
+			readmeContent,
+			breadcrumbs: dirPath.split('/').filter(Boolean)
+		};
+	}
+	
 	// Also highlight when data changes (for client-side navigation)
-	$: if (codeElement && data.type === 'file') {
+	$: if (codeElement && data?.type === 'file') {
 		setTimeout(() => {
 			hljs.highlightElement(codeElement);
 		}, 0);
@@ -133,7 +306,7 @@
 </script>
 
 <svelte:head>
-	<title>Browser: {data.path} - PythonMap</title>
+	<title>Browser: {data?.path || 'Loading...'} - PythonMap</title>
 </svelte:head>
 
 <!-- Search Panel -->
@@ -144,6 +317,16 @@
 <!-- Main Content -->
 <div class="flex-1 overflow-auto">
 	<div class="container mx-auto px-4 py-8">
+		{#if loading}
+			<div class="text-center py-12">
+				<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading...</p>
+			</div>
+		{:else if error}
+			<div class="text-center py-12">
+				<p class="text-red-500 text-lg">{error}</p>
+				<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline mt-4 inline-block">&larr; Back to Browser</a>
+			</div>
+		{:else if data}
 		<!-- Navigation -->
 		<div class="mb-8">
 			<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Browser</a>
@@ -339,6 +522,7 @@
 				</div>
 			{/if}
 	{/if}
+		{/if}
 	</div>
 </div>
 
