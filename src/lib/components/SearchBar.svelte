@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	
 	export let mode = 'full'; // 'full', 'collapsed', or 'panel'
 	
@@ -15,7 +16,7 @@
 	
 	onMount(async () => {
 		try {
-			const response = await fetch('/data/search_index.json');
+			const response = await fetch(`${base}/data/search_index.json`);
 			searchIndex = await response.json();
 			
 			// Extract unique tags

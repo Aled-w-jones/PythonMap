@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { base } from '$app/paths';
 	
 	let searchQuery = '';
 	let searchResults = [];
@@ -21,7 +22,7 @@
 		}
 		
 		try {
-			const response = await fetch('/data/search_index.json');
+			const response = await fetch(`${base}/data/search_index.json`);
 			searchIndex = await response.json();
 			
 			// Extract unique tags
