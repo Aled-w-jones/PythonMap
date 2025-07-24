@@ -22,9 +22,9 @@
 	let leftPanelWidth = 50; // Percentage
 	let isPanelOpen = true;
 	
-	// Check if this file has README.md for split view
+	// Check if this file has README.md for split view OR if this IS a README file that should show split view
 	$: isFileWithReadme = data?.type === 'file' && 
-		data?.readmeContent;
+		(data?.readmeContent || (data?.name?.toLowerCase().includes('readme') && data?.extension === 'md'));
 	
 	// Debug logging
 	$: if (data) {
@@ -100,18 +100,27 @@
 						let isMarkdownRendered = false;
 						
 						if (item.type === 'markdown') {
-							// For raw markdown files, check if we have a processed HTML version
-							const htmlVersion = searchIndex.find(htmlItem => 
-								htmlItem.type === 'readme' && 
-								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
-							);
-							if (htmlVersion) {
-								displayContent = htmlVersion.content;
-								isMarkdownRendered = true;
-							}
+							// For raw markdown files, keep them as raw markdown for direct viewing
+							// Only render as HTML in split view context, not when viewing the file directly
+							displayContent = item.content;
+							isMarkdownRendered = false;
 						} else if (item.type === 'readme') {
 							// This is already processed HTML
 							isMarkdownRendered = true;
+						}
+						
+						// Special handling for README files viewed directly
+						let readmeContent = await findReadmeForFile(searchIndex, item);
+						
+						// If this IS a README file, find its processed HTML version for the right panel
+						if (fileName.toLowerCase().includes('readme') && getExtensionFromPath(item.filePath) === 'md') {
+							const processedVersion = searchIndex.find(htmlItem => 
+								htmlItem.type === 'readme' && 
+								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
+							);
+							if (processedVersion) {
+								readmeContent = processedVersion.content;
+							}
 						}
 						
 						data = {
@@ -121,7 +130,7 @@
 							extension: getExtensionFromPath(item.filePath),
 							name: fileName,
 							breadcrumbs: requestedPath.split('/').filter(Boolean),
-							readmeContent: await findReadmeForFile(searchIndex, item),
+							readmeContent: readmeContent,
 							isMarkdownRendered: isMarkdownRendered
 						};
 					} else {
@@ -154,7 +163,8 @@
 	// Helper functions
 	function findItemInSearchIndex(searchIndex, path) {
 		// Skip notepad entries for browser - only find actual files
-		return searchIndex.find(item => {
+		// For direct file viewing, prefer raw markdown over processed readme
+		const items = searchIndex.filter(item => {
 			if (item.type === 'notepad') return false;
 			
 			if (item.filePath) {
@@ -167,6 +177,13 @@
 			}
 			return false;
 		});
+		
+		// If we have multiple matches (raw markdown + processed readme), prefer raw markdown for direct viewing
+		const markdownItem = items.find(item => item.type === 'markdown');
+		if (markdownItem) return markdownItem;
+		
+		// Otherwise return the first match
+		return items[0];
 	}
 	
 	function getExtensionFromPath(filePath) {
@@ -180,6 +197,12 @@
 		const fileDir = fileItem.filePath.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
 		
 		console.log('Looking for README for file:', fileName, 'in directory:', fileDir);
+		console.log('File name without ext:', fileNameWithoutExt);
+		console.log('Looking for patterns:', [
+			'readme.md', 
+			`${fileNameWithoutExt.toLowerCase()}_readme.md`,
+			`readme_${fileNameWithoutExt.toLowerCase()}.md`
+		]);
 		
 		// Look for the processed HTML version (type: 'readme') first
 		let readmeItem = searchIndex.find(item => {
@@ -190,13 +213,16 @@
 				
 				// Check if it's in the same directory
 				if (itemDir === fileDir) {
+					console.log('Checking README item:', itemFileName, 'in dir:', itemDir);
 					// Check for different README patterns:
 					// 1. README.md (general directory README)
 					// 2. script_a_README.md (file-specific README)
 					// 3. README_script_a.md (alternative pattern)
-					return itemFileName.toLowerCase() === 'readme.md' || 
+					const matches = itemFileName.toLowerCase() === 'readme.md' || 
 					       itemFileName.toLowerCase() === `${fileNameWithoutExt.toLowerCase()}_readme.md` ||
 					       itemFileName.toLowerCase() === `readme_${fileNameWithoutExt.toLowerCase()}.md`;
+					console.log('Pattern match result:', matches, 'for file:', itemFileName.toLowerCase());
+					return matches;
 				}
 			}
 			return false;
@@ -466,9 +492,9 @@
 		<!-- Breadcrumbs -->
 		<nav class="mb-6">
 			<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
-				<a href="{base}/" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Home</a>
+				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Home</a>
 				<span>/</span>
-				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Scripts</a>
+				<a href="{base}/browser/scripts" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Scripts</a>
 				{#if data.breadcrumbs.length > 0}
 					{#each data.breadcrumbs as crumb, index}
 						<span>/</span>

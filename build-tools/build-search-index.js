@@ -107,6 +107,20 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                                 filePath: fullPath,
                                 url: `/browser/${relativePath}`
                             });
+                            
+                            // If this is a README markdown file (but not the standard README.md), 
+                            // also create a processed HTML version for split view
+                            if (extension === '.md' && item.toLowerCase().includes('readme') && item.toLowerCase() !== 'readme.md') {
+                                const processedContent = marked(content);
+                                searchIndex.push({
+                                    type: 'readme',
+                                    title: `README - ${item.replace(/\.md$/i, '')}`,
+                                    description: `Processed README file for ${item}`,
+                                    content: processedContent,
+                                    filePath: fullPath,
+                                    url: `/browser/${relativePath}`
+                                });
+                            }
                         } catch (error) {
                             console.warn(`Warning: Could not read ${fullPath}`);
                         }
