@@ -250,14 +250,26 @@
 			return a.name.localeCompare(b.name);
 		});
 		
-		// Find README for this directory
+		// Find README for this directory - only if there's a README directly in this directory
 		let readmeContent = null;
-		const readmeItem = searchIndex.find(item => 
-			item.type === 'readme' && 
-			item.filePath.replace(/\\/g, '/').includes(dirPath)
-		);
-		if (readmeItem) {
-			readmeContent = readmeItem.content;
+		
+		// Only show README content for specific directories that actually have a README
+		// The root scripts directory should not show any README content
+		if (dirPath !== 'scripts' && dirPath !== '') {
+			const readmeItem = searchIndex.find(item => {
+				if (item.type === 'readme') {
+					const normalizedPath = item.filePath.replace(/\\/g, '/');
+					const readmeDir = normalizedPath.replace('scripts/', '').replace('/README.md', '');
+					
+					// Only show README if it's directly in the requested directory
+					return readmeDir === dirPath;
+				}
+				return false;
+			});
+			
+			if (readmeItem) {
+				readmeContent = readmeItem.content;
+			}
 		}
 		
 		return {
