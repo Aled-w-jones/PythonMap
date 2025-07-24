@@ -46,15 +46,41 @@
 	hljs.registerLanguage('json', json);
 	hljs.registerLanguage('markdown', markdown);
 	
+	let searchIndex = null;
+	
+	// Load search index once
 	onMount(async () => {
-		const requestedPath = $page.params.path || '';
-		
 		try {
-			// Load search index to get file information
 			const searchResponse = await fetch(`${base}/data/search_index.json`);
 			if (!searchResponse.ok) throw new Error('Failed to load search index');
-			
-			const searchIndex = await searchResponse.json();
+			searchIndex = await searchResponse.json();
+		} catch (err) {
+			console.error('Error loading search index:', err);
+			error = 'Failed to load search index';
+			loading = false;
+		}
+		
+		// Load panel state from localStorage
+		if (browser) {
+			const savedState = localStorage.getItem('browserSearchPanelOpen');
+			if (savedState !== null) {
+				isPanelOpen = JSON.parse(savedState);
+			}
+		}
+	});
+	
+	// React to path changes
+	$: if (searchIndex && $page.params.path !== undefined) {
+		loadPageData($page.params.path || '');
+	}
+	
+	async function loadPageData(requestedPath) {
+		loading = true;
+		error = null;
+		data = null;
+		
+		try {
+			console.log('Loading data for path:', requestedPath);
 			
 			if (!requestedPath || requestedPath === 'scripts') {
 				// Show scripts directory listing
@@ -62,6 +88,8 @@
 			} else {
 				// Try to find specific file or directory
 				const item = findItemInSearchIndex(searchIndex, requestedPath);
+				console.log('Found item:', item);
+				
 				if (item) {
 					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript') {
 						// File view - get actual filename from path
@@ -80,7 +108,11 @@
 						data = await buildDirectoryListing(searchIndex, requestedPath);
 					}
 				} else {
-					throw new Error('Path not found');
+					// Try as directory
+					data = await buildDirectoryListing(searchIndex, requestedPath);
+					if (!data.items || data.items.length === 0) {
+						throw new Error('Path not found');
+					}
 				}
 			}
 		} catch (err) {
@@ -90,21 +122,13 @@
 			loading = false;
 		}
 		
-		// Load panel state from localStorage
-		if (browser) {
-			const savedState = localStorage.getItem('browserSearchPanelOpen');
-			if (savedState !== null) {
-				isPanelOpen = JSON.parse(savedState);
-			}
-		}
-		
-		// Use a short delay to ensure the element is fully rendered
+		// Highlight code if it's a file
 		setTimeout(() => {
 			if (codeElement && data?.type === 'file') {
 				hljs.highlightElement(codeElement);
 			}
 		}, 100);
-	});
+	}
 	
 	// Helper functions
 	function findItemInSearchIndex(searchIndex, path) {
@@ -138,6 +162,8 @@
 		const items = [];
 		const seenItems = new Set();
 		
+		console.log('Building directory listing for:', dirPath);
+		
 		// Find all items in this directory - exclude notepad entries, only show actual files
 		for (const item of searchIndex) {
 			// Skip notepad entries - we only want actual files for the browser
@@ -148,7 +174,9 @@
 				const relativePath = normalizedPath.replace('scripts/', '');
 				const pathParts = relativePath.split('/');
 				
-				if (dirPath === 'scripts') {
+				console.log('Processing item:', item.filePath, 'relativePath:', relativePath, 'pathParts:', pathParts);
+				
+				if (dirPath === 'scripts' || dirPath === '') {
 					// Root scripts directory
 					if (pathParts.length === 1) {
 						// Direct file in scripts - use actual filename, not title
@@ -157,7 +185,7 @@
 							items.push({
 								name: fileName,
 								type: 'file',
-								path: relativePath,
+								path: fileName,
 								extension: getExtensionFromPath(item.filePath)
 							});
 							seenItems.add(fileName);
@@ -175,12 +203,15 @@
 						}
 					}
 				} else {
-					// Specific subdirectory
-					if (relativePath.startsWith(dirPath + '/')) {
-						const remainingPath = relativePath.replace(dirPath + '/', '');
+					// Specific subdirectory - check if the file is in this directory
+					const targetDir = dirPath;
+					
+					// Check if this file belongs to the target directory
+					if (relativePath.startsWith(targetDir + '/') || relativePath === targetDir) {
+						const remainingPath = relativePath.replace(targetDir + '/', '');
 						const remainingParts = remainingPath.split('/');
 						
-						if (remainingParts.length === 1) {
+						if (remainingParts.length === 1 && remainingParts[0] !== '') {
 							// Direct file in this directory - use actual filename
 							const fileName = remainingParts[0];
 							if (!seenItems.has(fileName)) {
@@ -192,14 +223,14 @@
 								});
 								seenItems.add(fileName);
 							}
-						} else {
+						} else if (remainingParts.length > 1) {
 							// File in subdirectory
 							const subDir = remainingParts[0];
 							if (!seenItems.has(subDir)) {
 								items.push({
 									name: subDir,
 									type: 'directory',
-									path: dirPath + '/' + subDir
+									path: targetDir + '/' + subDir
 								});
 								seenItems.add(subDir);
 							}
@@ -208,6 +239,8 @@
 				}
 			}
 		}
+		
+		console.log('Found items for', dirPath, ':', items);
 		
 		// Sort items: directories first, then files
 		items.sort((a, b) => {
