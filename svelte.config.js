@@ -19,6 +19,9 @@ const config = {
 		paths: {
 			base: base
 		},
+		serviceWorker: {
+			register: false
+		},
 		prerender: {
 			handleHttpError: 'warn',
 			entries: [
@@ -26,9 +29,14 @@ const config = {
 				'/notepads',
 				'/browser',
 				'/browser/scripts',
+				'/browser/scripts/script_a.py',
+				'/browser/scripts/project_x',
+				'/browser/scripts/project_x/util.py',
+				'/browser/scripts/project_x/README.md',
 				'/notepads/file_automation',
 				'/notepads/data_analysis_utils'
-			]
+			],
+			crawl: true
 		}
 	}
 };
