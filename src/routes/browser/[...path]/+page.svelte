@@ -64,13 +64,14 @@
 				const item = findItemInSearchIndex(searchIndex, requestedPath);
 				if (item) {
 					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript') {
-						// File view
+						// File view - get actual filename from path
+						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
 						data = {
 							type: 'file',
 							path: requestedPath,
 							content: item.content,
 							extension: getExtensionFromPath(item.filePath),
-							name: item.title,
+							name: fileName,
 							breadcrumbs: requestedPath.split('/').filter(Boolean),
 							readmeContent: await findReadmeForFile(searchIndex, item)
 						};
@@ -107,13 +108,13 @@
 	
 	// Helper functions
 	function findItemInSearchIndex(searchIndex, path) {
+		// Skip notepad entries for browser - only find actual files
 		return searchIndex.find(item => {
+			if (item.type === 'notepad') return false;
+			
 			if (item.filePath) {
 				const normalizedPath = item.filePath.replace(/\\/g, '/').replace('scripts/', '');
-				return normalizedPath === path || 
-					   normalizedPath === path + '.py' ||
-					   normalizedPath === path + '.md' ||
-					   item.title.toLowerCase() === path.toLowerCase();
+				return normalizedPath === path;
 			}
 			return false;
 		});
@@ -137,8 +138,11 @@
 		const items = [];
 		const seenItems = new Set();
 		
-		// Find all items in this directory
+		// Find all items in this directory - exclude notepad entries, only show actual files
 		for (const item of searchIndex) {
+			// Skip notepad entries - we only want actual files for the browser
+			if (item.type === 'notepad') continue;
+			
 			if (item.filePath) {
 				const normalizedPath = item.filePath.replace(/\\/g, '/');
 				const relativePath = normalizedPath.replace('scripts/', '');
@@ -147,15 +151,16 @@
 				if (dirPath === 'scripts') {
 					// Root scripts directory
 					if (pathParts.length === 1) {
-						// Direct file in scripts
-						if (!seenItems.has(item.title)) {
+						// Direct file in scripts - use actual filename, not title
+						const fileName = pathParts[0];
+						if (!seenItems.has(fileName)) {
 							items.push({
-								name: item.title,
+								name: fileName,
 								type: 'file',
 								path: relativePath,
 								extension: getExtensionFromPath(item.filePath)
 							});
-							seenItems.add(item.title);
+							seenItems.add(fileName);
 						}
 					} else if (pathParts.length > 1) {
 						// File in subdirectory - add the subdirectory
@@ -176,15 +181,16 @@
 						const remainingParts = remainingPath.split('/');
 						
 						if (remainingParts.length === 1) {
-							// Direct file in this directory
-							if (!seenItems.has(item.title)) {
+							// Direct file in this directory - use actual filename
+							const fileName = remainingParts[0];
+							if (!seenItems.has(fileName)) {
 								items.push({
-									name: item.title,
+									name: fileName,
 									type: 'file',
 									path: relativePath,
 									extension: getExtensionFromPath(item.filePath)
 								});
-								seenItems.add(item.title);
+								seenItems.add(fileName);
 							}
 						} else {
 							// File in subdirectory
