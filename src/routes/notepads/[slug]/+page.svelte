@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
@@ -20,6 +21,11 @@
 	let isResizing = false;
 	let leftPanelWidth = 50; // Percentage
 	let pageLoaded = false;
+	
+	// Mobile-specific state
+	let isMobile = false;
+	let showMobileModal = false;
+	let mobileModalContent = 'code'; // 'code' or 'documentation'
 	
 	// Register Python language
 	hljs.registerLanguage('python', python);
@@ -77,6 +83,17 @@
 			loading = false;
 		}
 		
+		// Check if mobile
+		if (browser) {
+			isMobile = window.innerWidth < 1024; // lg breakpoint
+			window.addEventListener('resize', () => {
+				isMobile = window.innerWidth < 1024;
+				if (!isMobile && showMobileModal) {
+					showMobileModal = false;
+				}
+			});
+		}
+		
 		// Add entrance animation delay
 		setTimeout(() => {
 			pageLoaded = true;
@@ -127,6 +144,21 @@
 		document.removeEventListener('mousemove', handleResize);
 		document.removeEventListener('mouseup', stopResize);
 	}
+	
+	// Mobile modal functions
+	function showMobileCode() {
+		mobileModalContent = 'code';
+		showMobileModal = true;
+	}
+	
+	function showMobileDocumentation() {
+		mobileModalContent = 'documentation';
+		showMobileModal = true;
+	}
+	
+	function closeMobileModal() {
+		showMobileModal = false;
+	}
 </script>
 
 <svelte:head>
@@ -147,67 +179,83 @@
 		</div>
 	</div>
 {:else}
-<div class="container mx-auto px-4 py-8 max-w-none page-container" class:loaded={pageLoaded}>
+<div class="container mx-auto px-4 py-4 lg:py-8 max-w-none page-container" class:loaded={pageLoaded}>
 	<div class="mb-6">
 		<a href="{base}/notepads" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Notepads</a>
 	</div>
 	
 	<!-- Header Section -->
-	<header class="mb-6">
-		<h1 class="text-3xl font-bold mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary">{notepad.title}</h1>
-		<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">{notepad.description}</p>
+	<header class="mb-6 lg:mb-8">
+		<h1 class="text-xl lg:text-3xl font-bold mb-3 lg:mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary break-words">{notepad.title}</h1>
+		<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-3 lg:mb-4 text-sm lg:text-base">{notepad.description}</p>
 		
-		<div class="flex flex-wrap gap-2 mb-4">
+		<div class="flex flex-wrap gap-1 lg:gap-2 mb-3 lg:mb-4">
 			{#each notepad.tags as tag}
-				<span class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-secondary dark:text-vsc-text-secondary px-2 py-1 rounded text-sm">
+				<span class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-secondary dark:text-vsc-text-secondary px-2 py-1 rounded text-xs lg:text-sm">
 					{tag}
 				</span>
 			{/each}
 		</div>
 		
-		<div class="flex flex-wrap gap-4 text-sm text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
-			<span>File: {notepad.filePath}</span>
+		<div class="flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-4 text-xs lg:text-sm text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-3 lg:mb-4">
+			<span class="break-all">File: {notepad.filePath}</span>
 			<span>Dependencies: {notepad.dependencies.join(', ')}</span>
 			<span>Updated: {new Date(notepad.lastUpdated).toLocaleDateString()}</span>
 		</div>
 		
 		<!-- Action Buttons -->
-		<div class="flex flex-wrap gap-3">
+		<div class="flex flex-wrap gap-2 lg:gap-3">
 			<button 
 				on:click={copyToClipboard}
-				class="bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+				class="bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-3 lg:px-4 py-2 rounded hover:bg-blue-600 transition-colors text-sm lg:text-base"
 			>
 				📋 Copy Code
 			</button>
 			
-			{#if readmeContent}
+			{#if readmeContent && !isMobile}
 				<button 
 					on:click={toggleReadme}
-					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-4 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light"
+					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-3 lg:px-4 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light text-sm lg:text-base"
 				>
 					{showReadme ? '👁️ Hide' : '📖 Show'} Documentation
+				</button>
+			{/if}
+			
+			{#if readmeContent && isMobile}
+				<button 
+					on:click={showMobileCode}
+					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-3 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light text-sm"
+				>
+					💻 Show Code
+				</button>
+				<button 
+					on:click={showMobileDocumentation}
+					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-3 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light text-sm"
+				>
+					📖 Show Documentation
 				</button>
 			{/if}
 		</div>
 	</header>
 
-	<!-- Split View Layout -->
-	<div bind:this={splitContainer} class="split-view flex flex-col lg:flex-row h-[calc(100vh-16rem)] {isResizing ? 'select-none' : ''}">
-		<!-- Code Panel -->
-		<div 
-			class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col transition-all duration-300"
-			style="width: {showReadme && readmeContent && !readmeMinimized ? `${leftPanelWidth}%` : '100%'}"
-		>
-			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
-				<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {notepad.filePath}</span>
+	{#if !isMobile}
+		<!-- Desktop Split View Layout -->
+		<div bind:this={splitContainer} class="split-view flex flex-col lg:flex-row h-[calc(100vh-16rem)] {isResizing ? 'select-none' : ''}">
+			<!-- Code Panel -->
+			<div 
+				class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col transition-all duration-300"
+				style="width: {showReadme && readmeContent && !readmeMinimized ? `${leftPanelWidth}%` : '100%'}"
+			>
+				<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
+					<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {notepad.filePath}</span>
+				</div>
+				<div class="flex-1 overflow-auto">
+					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
+						bind:this={codeElement}
+						class="language-python block p-4 text-sm leading-relaxed"
+					>{content}</code></pre>
+				</div>
 			</div>
-			<div class="flex-1 overflow-auto">
-				<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
-					bind:this={codeElement}
-					class="language-python block p-4 text-sm leading-relaxed"
-				>{content}</code></pre>
-			</div>
-		</div>
 
 		<!-- Resizer Bar -->
 		{#if showReadme && readmeContent && !readmeMinimized}
@@ -270,8 +318,109 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
+		</div>
+	{:else}
+		<!-- Mobile View -->
+		<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden">
+			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light">
+				<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {notepad.filePath}</span>
+			</div>
+			{#if readmeContent}
+				<div class="p-4 text-center">
+					<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
+						This notepad has documentation available. Use the buttons above to view code or documentation.
+					</p>
+					<div class="flex gap-3 justify-center">
+						<button 
+							on:click={showMobileCode}
+							class="bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-6 py-3 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+						>
+							💻 View Code
+						</button>
+						<button 
+							on:click={showMobileDocumentation}
+							class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-6 py-3 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light"
+						>
+							📖 View Documentation
+						</button>
+					</div>
+				</div>
+			{:else}
+				<!-- Mobile Code Only View -->
+				<div class="overflow-auto">
+					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0"><code 
+						bind:this={codeElement}
+						class="language-python block p-3 text-xs leading-relaxed"
+					>{content}</code></pre>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </div>
+
+<!-- Mobile Modal -->
+{#if showMobileModal && isMobile}
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+			<!-- Modal Header -->
+			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-3 border-b border-vsc-light-border dark:border-vsc-border-light flex items-center justify-between flex-shrink-0">
+				<div class="flex items-center gap-2">
+					<span class="text-lg">
+						{mobileModalContent === 'code' ? '💻' : '📖'}
+					</span>
+					<span class="text-sm font-medium text-vsc-light-text-primary dark:text-vsc-text-primary">
+						{mobileModalContent === 'code' ? 'Code' : 'Documentation'}: {notepad.title}
+					</span>
+				</div>
+				<button 
+					on:click={closeMobileModal}
+					class="text-vsc-light-text-secondary dark:text-vsc-text-secondary hover:text-vsc-light-text-primary dark:hover:text-vsc-text-primary transition-colors text-xl"
+					title="Close"
+				>
+					✕
+				</button>
+			</div>
+			
+			<!-- Modal Content -->
+			<div class="flex-1 overflow-auto">
+				{#if mobileModalContent === 'code'}
+					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
+						class="language-python block p-3 text-xs leading-relaxed"
+					>{content}</code></pre>
+				{:else if mobileModalContent === 'documentation'}
+					<div class="p-4">
+						<div class="prose prose-invert max-w-none">
+							{@html readmeContent}
+						</div>
+					</div>
+				{/if}
+			</div>
+			
+			<!-- Modal Footer -->
+			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-3 border-t border-vsc-light-border dark:border-vsc-border-light flex gap-2 flex-shrink-0">
+				<button 
+					on:click={() => mobileModalContent = 'code'}
+					class="px-4 py-2 rounded transition-colors {mobileModalContent === 'code' ? 'bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white' : 'bg-vsc-light-bg-medium dark:bg-vsc-bg-medium text-vsc-light-text-primary dark:text-vsc-text-primary border border-vsc-light-border dark:border-vsc-border-light'}"
+				>
+					💻 Code
+				</button>
+				<button 
+					on:click={() => mobileModalContent = 'documentation'}
+					class="px-4 py-2 rounded transition-colors {mobileModalContent === 'documentation' ? 'bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white' : 'bg-vsc-light-bg-medium dark:bg-vsc-bg-medium text-vsc-light-text-primary dark:text-vsc-text-primary border border-vsc-light-border dark:border-vsc-border-light'}"
+				>
+					📖 Documentation
+				</button>
+				<div class="flex-1"></div>
+				<button 
+					on:click={closeMobileModal}
+					class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium text-vsc-light-text-primary dark:text-vsc-text-primary px-4 py-2 rounded hover:bg-vsc-light-bg-light dark:hover:bg-vsc-bg-light transition-colors border border-vsc-light-border dark:border-vsc-border-light"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 {/if}
 
 <style>

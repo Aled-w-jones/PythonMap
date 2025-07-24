@@ -793,7 +793,7 @@
 			<div class="flex-1 overflow-auto">
 				{#if mobileModalContent === 'code'}
 					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
-						class="{getLanguageClass(data.extension)} block p-4 text-sm leading-relaxed"
+						class="{getLanguageClass(data.extension)} block p-3 text-xs leading-relaxed"
 					>{data.content}</code></pre>
 				{:else if mobileModalContent === 'documentation'}
 					<div class="p-4">
