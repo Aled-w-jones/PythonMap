@@ -94,14 +94,29 @@
 					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript') {
 						// File view - get actual filename from path
 						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
+						
+						// Check if this is a markdown file that should be rendered as HTML
+						let displayContent = item.content;
+						if (item.type === 'markdown') {
+							// For markdown files, check if we have a processed HTML version
+							const htmlVersion = searchIndex.find(htmlItem => 
+								htmlItem.type === 'readme' && 
+								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
+							);
+							if (htmlVersion) {
+								displayContent = htmlVersion.content;
+							}
+						}
+						
 						data = {
 							type: 'file',
 							path: requestedPath,
-							content: item.content,
+							content: displayContent,
 							extension: getExtensionFromPath(item.filePath),
 							name: fileName,
 							breadcrumbs: requestedPath.split('/').filter(Boolean),
-							readmeContent: await findReadmeForFile(searchIndex, item)
+							readmeContent: await findReadmeForFile(searchIndex, item),
+							isMarkdownRendered: item.type === 'markdown' && displayContent !== item.content
 						};
 					} else {
 						// Directory view
@@ -441,7 +456,7 @@
 		<!-- Breadcrumbs -->
 		<nav class="mb-6">
 			<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
-				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">/</a>
+				<a href="{base}/" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Home</a>
 				<span>/</span>
 				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Scripts</a>
 				{#if data.breadcrumbs.length > 0}
@@ -623,10 +638,21 @@
 					<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light">
 						<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{data.path}</span>
 					</div>
-					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0"><code 
-						bind:this={codeElement}
-						class="{getLanguageClass(data.extension)} block p-4 overflow-x-auto text-sm"
-					>{data.content}</code></pre>
+					
+					{#if data.isMarkdownRendered}
+						<!-- Rendered Markdown Content -->
+						<div class="p-6">
+							<div class="prose prose-invert max-w-none">
+								{@html data.content}
+							</div>
+						</div>
+					{:else}
+						<!-- Raw Code Content -->
+						<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0"><code 
+							bind:this={codeElement}
+							class="{getLanguageClass(data.extension)} block p-4 overflow-x-auto text-sm"
+						>{data.content}</code></pre>
+					{/if}
 				</div>
 			{/if}
 	{/if}
