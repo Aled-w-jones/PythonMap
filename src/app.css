@@ -1,0 +1,173 @@
+@import 'highlight.js/styles/vs2015.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global VS Code-like Defaults with Light Mode Support */
+body {
+  @apply bg-vsc-light-bg-dark dark:bg-vsc-bg-dark text-vsc-light-text-primary dark:text-vsc-text-primary;
+}
+
+/* Light mode scrollbar */
+html:not(.dark) body {
+  scrollbar-color: #bbb #eee;
+  scrollbar-width: thin;
+}
+
+html:not(.dark) ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: #eee;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background-color: #bbb;
+  border-radius: 5px;
+  border: 2px solid #eee;
+}
+
+/* Dark mode scrollbar */
+.dark body {
+  scrollbar-color: #555 #333;
+  scrollbar-width: thin;
+}
+
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #333;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 5px;
+  border: 2px solid #333;
+}
+
+/* Highlight.js theme already imported at the top */
+
+/* Override highlight.js base colors if necessary to fine-tune to VS Code */
+pre code {
+  @apply bg-transparent !important; /* Let parent background dictate */
+}
+
+/* Base code text colors */
+html:not(.dark) pre code {
+  color: theme('colors.vsc-light-text-primary') !important;
+}
+
+.dark pre code {
+  color: theme('colors.vsc-text-primary') !important;
+}
+
+/* Light mode syntax highlighting */
+html:not(.dark) .hljs-keyword,
+html:not(.dark) .hljs-built_in,
+html:not(.dark) .hljs-type,
+html:not(.dark) .hljs-literal {
+  color: theme('colors.vsc-light-keyword') !important;
+}
+
+html:not(.dark) .hljs-string,
+html:not(.dark) .hljs-title,
+html:not(.dark) .hljs-section {
+  color: theme('colors.vsc-light-string') !important;
+}
+
+html:not(.dark) .hljs-comment {
+  color: theme('colors.vsc-light-comment') !important;
+}
+
+html:not(.dark) .hljs-number,
+html:not(.dark) .hljs-literal {
+  color: #098658 !important;
+}
+
+html:not(.dark) .hljs-name,
+html:not(.dark) .hljs-variable,
+html:not(.dark) .hljs-template-variable {
+  color: #001080 !important;
+}
+
+html:not(.dark) .hljs-function,
+html:not(.dark) .hljs-title.function_ {
+  color: #795E26 !important;
+}
+
+html:not(.dark) .hljs-class,
+html:not(.dark) .hljs-title.class_ {
+  color: #267F99 !important;
+}
+
+html:not(.dark) .hljs-attr,
+html:not(.dark) .hljs-attribute {
+  color: #E50000 !important;
+}
+
+html:not(.dark) .hljs-meta,
+html:not(.dark) .hljs-doctag {
+  color: #795E26 !important;
+}
+
+html:not(.dark) .hljs-symbol,
+html:not(.dark) .hljs-bullet,
+html:not(.dark) .hljs-link {
+  color: #001080 !important;
+}
+
+/* Make sure imported modules like 'os', 'shutil' are clearly visible */
+html:not(.dark) .hljs-title.class_,
+html:not(.dark) .hljs-class .hljs-title {
+  color: #267F99 !important;
+}
+
+html:not(.dark) .hljs-built_in {
+  color: #001080 !important;
+}
+
+/* Dark mode syntax highlighting */
+.dark .hljs-keyword,
+.dark .hljs-built_in,
+.dark .hljs-type,
+.dark .hljs-literal {
+  color: theme('colors.vsc-keyword') !important;
+}
+
+.dark .hljs-string,
+.dark .hljs-title,
+.dark .hljs-section {
+  color: theme('colors.vsc-string') !important;
+}
+
+.dark .hljs-comment {
+  color: theme('colors.vsc-comment') !important;
+}
+
+/* Additional code block styling */
+pre {
+  @apply bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded p-4 overflow-x-auto;
+}
+
+code {
+  @apply font-mono text-sm;
+}
+
+/* Links styling */
+a {
+  @apply text-vsc-accent-blue hover:underline;
+}
+
+/* Selection styling */
+::selection {
+  @apply bg-vsc-selection-bg;
+}
+
+::-moz-selection {
+  @apply bg-vsc-selection-bg;
+}

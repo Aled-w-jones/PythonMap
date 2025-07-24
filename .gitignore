@@ -1,0 +1,42 @@
+# SvelteKit specific
+.svelte-kit/
+build/
+.env
+.env.*
+VITE_
+!VITE_
+npm-debug.*
+*.log
+node_modules/
+dist/
+.output
+.vercel
+.netlify
+.wrangler
+
+# Git
+.git/
+.gitattributes
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Python specific (if you have a local dev server or virtual environment)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+
+# Search index (can be rebuilt)
+data/search_index.json
+
+# Build tools (internal scripts)
+build-tools/
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
