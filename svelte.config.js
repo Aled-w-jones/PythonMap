@@ -16,7 +16,6 @@ const config = {
 			precompress: false,
 			strict: false
 		}),
-		base: base,
 		paths: {
 			base: base
 		},
