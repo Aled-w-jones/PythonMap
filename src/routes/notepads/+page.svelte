@@ -1,6 +1,24 @@
 <script>
-	export let data;
+	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
+	
+	let notepads = [];
+	let loading = true;
+	
+	onMount(async () => {
+		try {
+			// Load notepads data from the static JSON file generated during build
+			const response = await fetch(`${base}/data/notepads.json`);
+			if (response.ok) {
+				const data = await response.json();
+				notepads = data;
+			}
+		} catch (error) {
+			console.error('Error loading notepads:', error);
+		} finally {
+			loading = false;
+		}
+	});
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -13,8 +31,13 @@
 		<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary">Browse and view your Python scripts with syntax highlighting</p>
 	</header>
 
+	{#if loading}
+		<div class="text-center py-12">
+			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading notepads...</p>
+		</div>
+	{:else}
 		<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-			{#each data.notepads as notepad}
+			{#each notepads as notepad}
 				<div class="notepad-card group cursor-pointer transform transition-all duration-300 ease-out hover:scale-105 hover:-rotate-1">
 					<a href="{base}/notepads/{notepad.id}" class="block">
 						<!-- Notepad Stack Shadow Layers -->
@@ -91,11 +114,12 @@
 			{/each}
 		</div>
 
-		{#if data.notepads.length === 0}
+		{#if notepads.length === 0}
 			<div class="text-center py-12">
 				<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">No notepads found.</p>
 				<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary">Add some Python scripts to the scripts/ directory and update data/notepads.json</p>
 			</div>
+		{/if}
 	{/if}
 </div>
 

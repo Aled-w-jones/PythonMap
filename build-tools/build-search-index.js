@@ -37,7 +37,13 @@ async function buildSearchIndex() {
         // Write search index to both data directory and static directory
         await writeFile('data/search_index.json', JSON.stringify(searchIndex, null, 2));
         await writeFile('static/data/search_index.json', JSON.stringify(searchIndex, null, 2));
+        
+        // Also copy notepads.json to static directory for client-side access
+        const notepadsFileData = await readFile('data/notepads.json', 'utf-8');
+        await writeFile('static/data/notepads.json', notepadsFileData);
+        
         console.log(`Search index built with ${searchIndex.length} items`);
+        console.log('Notepads data copied to static directory');
         
     } catch (error) {
         console.error('Error building search index:', error);
