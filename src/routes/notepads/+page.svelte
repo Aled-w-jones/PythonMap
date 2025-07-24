@@ -1,10 +1,11 @@
 <script>
 	export let data;
+	import { base } from '$app/paths';
 </script>
 
 <div class="container mx-auto px-4 py-8">
 	<div class="mb-8">
-		<a href="/" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Home</a>
+		<a href="{base}/" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Home</a>
 	</div>
 	
 	<header class="mb-8">
@@ -15,7 +16,7 @@
 		<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 			{#each data.notepads as notepad}
 				<div class="notepad-card group cursor-pointer transform transition-all duration-300 ease-out hover:scale-105 hover:-rotate-1">
-					<a href="/notepads/{notepad.id}" class="block">
+					<a href="{base}/notepads/{notepad.id}" class="block">
 						<!-- Notepad Stack Shadow Layers -->
 						<div class="absolute inset-0 bg-amber-100 dark:bg-slate-800 rounded-lg transform translate-x-1 translate-y-1 opacity-40"></div>
 						<div class="absolute inset-0 bg-amber-50 dark:bg-slate-700 rounded-lg transform translate-x-0.5 translate-y-0.5 opacity-60"></div>

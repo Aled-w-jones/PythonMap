@@ -1,3 +1,7 @@
+<script>
+	import { base } from '$app/paths';
+</script>
+
 <div class="container mx-auto px-4 py-8">
 	<div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 		<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg p-6 hover:bg-vsc-light-bg-light dark:hover:bg-vsc-bg-light transition-colors">
@@ -5,7 +9,7 @@
 			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
 				Browse and view Python scripts with syntax highlighting and annotations.
 			</p>
-			<a href="/notepads" class="inline-block bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
+			<a href="{base}/notepads" class="inline-block bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
 				View Notepads
 			</a>
 		</div>
@@ -15,7 +19,7 @@
 			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
 				Navigate through the repository structure and explore files and folders.
 			</p>
-			<a href="/browser" class="inline-block bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
+			<a href="{base}/browser" class="inline-block bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
 				Browse Code
 			</a>
 		</div>

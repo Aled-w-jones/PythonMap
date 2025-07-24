@@ -78,7 +78,7 @@
 	}
 	
 	function navigateToResult(result) {
-		goto(result.url);
+		goto(base + result.url);
 	}
 	
 	function clearSearch() {

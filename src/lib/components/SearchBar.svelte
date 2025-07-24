@@ -76,7 +76,7 @@
 	function navigateToResult(result) {
 		showResults = false;
 		searchQuery = '';
-		goto(result.url);
+		goto(base + result.url);
 	}
 	
 	function clearSearch() {

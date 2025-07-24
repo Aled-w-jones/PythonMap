@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { base } from '$app/paths';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
 	import javascript from 'highlight.js/lib/languages/javascript';
@@ -145,18 +146,18 @@
 	<div class="container mx-auto px-4 py-8">
 		<!-- Navigation -->
 		<div class="mb-8">
-			<a href="/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Browser</a>
+			<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Browser</a>
 		</div>
 		
 		<!-- Breadcrumbs -->
 		{#if data.breadcrumbs.length > 0}
 			<nav class="mb-6">
 				<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
-					<a href="/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">/</a>
+					<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">/</a>
 					{#each data.breadcrumbs as crumb, index}
 						<span>/</span>
 						<a 
-							href="/browser/{data.breadcrumbs.slice(0, index + 1).join('/')}"
+							href="{base}/browser/{data.breadcrumbs.slice(0, index + 1).join('/')}"
 							class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue"
 						>
 							{crumb}
@@ -205,7 +206,7 @@
 										</span>
 										<div class="transform transition-transform duration-300 hover:translate-x-1">
 											<a 
-												href="/browser/{item.path}"
+												href="{base}/browser/{item.path}"
 												class="text-vsc-light-text-primary dark:text-vsc-text-primary hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue font-medium transition-colors duration-200"
 											>
 												{item.name}

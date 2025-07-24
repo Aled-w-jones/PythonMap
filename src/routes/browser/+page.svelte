@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { base } from '$app/paths';
 	import BrowserSearchPanel from '$lib/components/BrowserSearchPanel.svelte';
 	
 	let isPanelOpen = true;
@@ -30,7 +31,7 @@
 <div class="flex-1 overflow-auto">
 	<div class="container mx-auto px-4 py-8">
 		<div class="mb-8">
-			<a href="/" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Home</a>
+			<a href="{base}/" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Home</a>
 		</div>
 		
 		<header class="mb-8">
@@ -43,7 +44,7 @@
 			
 			<div class="grid gap-4">
 				<button 
-					on:click={() => goto('/browser/scripts')}
+					on:click={() => goto(base + '/browser/scripts')}
 					class="text-left bg-vsc-light-bg-light dark:bg-vsc-bg-light border border-vsc-light-border dark:border-vsc-border-light rounded p-4 hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors transform hover:scale-[1.02] hover:shadow-lg"
 				>
 					<div class="flex items-center gap-2 mb-2">

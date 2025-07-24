@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
+	import { base } from '$app/paths';
 	
 	export let data;
 	
@@ -76,7 +77,7 @@
 
 <div class="container mx-auto px-4 py-8 max-w-none page-container" class:loaded={pageLoaded}>
 	<div class="mb-6">
-		<a href="/notepads" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Notepads</a>
+		<a href="{base}/notepads" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Notepads</a>
 	</div>
 	
 	<!-- Header Section -->
