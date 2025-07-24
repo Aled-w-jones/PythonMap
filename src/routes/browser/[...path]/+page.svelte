@@ -149,24 +149,53 @@
 	}
 	
 	async function findReadmeForFile(searchIndex, fileItem) {
-		// Find README files in the same directory
+		// Get the file name without extension for matching
+		const fileName = fileItem.filePath.split('/').pop().split('\\').pop();
+		const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
 		const fileDir = fileItem.filePath.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
 		
-		// Look for the processed HTML version (type: 'readme') first
-		let readmeItem = searchIndex.find(item => 
-			item.type === 'readme' && 
-			item.filePath.replace(/\\/g, '/').includes(fileDir)
-		);
+		console.log('Looking for README for file:', fileName, 'in directory:', fileDir);
 		
-		// If no processed version found, look for raw markdown and process it
+		// Look for the processed HTML version (type: 'readme') first
+		let readmeItem = searchIndex.find(item => {
+			if (item.type === 'readme') {
+				const itemPath = item.filePath.replace(/\\/g, '/');
+				const itemDir = itemPath.split('/').slice(0, -1).join('/');
+				const itemFileName = itemPath.split('/').pop();
+				
+				// Check if it's in the same directory
+				if (itemDir === fileDir) {
+					// Check for different README patterns:
+					// 1. README.md (general directory README)
+					// 2. script_a_README.md (file-specific README)
+					// 3. README_script_a.md (alternative pattern)
+					return itemFileName.toLowerCase() === 'readme.md' || 
+					       itemFileName.toLowerCase() === `${fileNameWithoutExt.toLowerCase()}_readme.md` ||
+					       itemFileName.toLowerCase() === `readme_${fileNameWithoutExt.toLowerCase()}.md`;
+				}
+			}
+			return false;
+		});
+		
+		// If no processed version found, look for raw markdown
 		if (!readmeItem) {
-			readmeItem = searchIndex.find(item => 
-				item.type === 'markdown' && 
-				item.filePath.replace(/\\/g, '/').includes(fileDir) &&
-				item.filePath.toLowerCase().includes('readme')
-			);
+			readmeItem = searchIndex.find(item => {
+				if (item.type === 'markdown') {
+					const itemPath = item.filePath.replace(/\\/g, '/');
+					const itemDir = itemPath.split('/').slice(0, -1).join('/');
+					const itemFileName = itemPath.split('/').pop();
+					
+					if (itemDir === fileDir && itemFileName.toLowerCase().includes('readme')) {
+						return itemFileName.toLowerCase() === 'readme.md' || 
+						       itemFileName.toLowerCase() === `${fileNameWithoutExt.toLowerCase()}_readme.md` ||
+						       itemFileName.toLowerCase() === `readme_${fileNameWithoutExt.toLowerCase()}.md`;
+					}
+				}
+				return false;
+			});
 		}
 		
+		console.log('Found README item:', readmeItem ? readmeItem.filePath : 'none');
 		return readmeItem ? readmeItem.content : null;
 	}
 	
@@ -410,10 +439,12 @@
 		</div>
 		
 		<!-- Breadcrumbs -->
-		{#if data.breadcrumbs.length > 0}
-			<nav class="mb-6">
-				<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
-					<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">/</a>
+		<nav class="mb-6">
+			<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
+				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">/</a>
+				<span>/</span>
+				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Scripts</a>
+				{#if data.breadcrumbs.length > 0}
 					{#each data.breadcrumbs as crumb, index}
 						<span>/</span>
 						<a 
@@ -423,9 +454,9 @@
 							{crumb}
 						</a>
 					{/each}
-				</div>
-			</nav>
-		{/if}
+				{/if}
+			</div>
+		</nav>
 
 		{#if data.type === 'directory'}
 			<!-- Directory View -->
