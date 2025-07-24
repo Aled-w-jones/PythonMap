@@ -37,9 +37,6 @@ venv/
 # Search index (can be rebuilt)
 data/search_index.json
 
-# Build tools (internal scripts)
-build-tools/
-
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
