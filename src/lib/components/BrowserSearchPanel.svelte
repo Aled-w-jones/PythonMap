@@ -10,7 +10,7 @@
 	let isSearching = false;
 	let selectedTag = '';
 	let availableTags = [];
-	export let isPanelOpen = true;
+	export let isPanelOpen = false;
 	
 	onMount(async () => {
 		// Load panel state from localStorage
