@@ -82,7 +82,7 @@
 		try {
 			console.log('Loading data for path:', requestedPath);
 			
-			if (!requestedPath || requestedPath === 'scripts') {
+			if (!requestedPath || requestedPath === '' || requestedPath === 'scripts') {
 				// Show scripts directory listing
 				data = await buildDirectoryListing(searchIndex, 'scripts');
 			} else {
@@ -91,21 +91,27 @@
 				console.log('Found item:', item);
 				
 				if (item) {
-					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript') {
+					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript' || item.type === 'readme') {
 						// File view - get actual filename from path
 						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
 						
 						// Check if this is a markdown file that should be rendered as HTML
 						let displayContent = item.content;
+						let isMarkdownRendered = false;
+						
 						if (item.type === 'markdown') {
-							// For markdown files, check if we have a processed HTML version
+							// For raw markdown files, check if we have a processed HTML version
 							const htmlVersion = searchIndex.find(htmlItem => 
 								htmlItem.type === 'readme' && 
 								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
 							);
 							if (htmlVersion) {
 								displayContent = htmlVersion.content;
+								isMarkdownRendered = true;
 							}
+						} else if (item.type === 'readme') {
+							// This is already processed HTML
+							isMarkdownRendered = true;
 						}
 						
 						data = {
@@ -116,7 +122,7 @@
 							name: fileName,
 							breadcrumbs: requestedPath.split('/').filter(Boolean),
 							readmeContent: await findReadmeForFile(searchIndex, item),
-							isMarkdownRendered: item.type === 'markdown' && displayContent !== item.content
+							isMarkdownRendered: isMarkdownRendered
 						};
 					} else {
 						// Directory view
@@ -351,7 +357,7 @@
 			path: dirPath,
 			items,
 			readmeContent,
-			breadcrumbs: dirPath.split('/').filter(Boolean)
+			breadcrumbs: dirPath === 'scripts' ? [] : dirPath.split('/').filter(Boolean)
 		};
 	}
 	
@@ -481,7 +487,7 @@
 			<!-- Directory View -->
 			<header class="mb-8">
 				<h1 class="text-3xl font-bold mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary">
-					📁 {data.path === '.' ? 'Root Directory' : data.path}
+					📁 {data.path === 'scripts' || data.path === '.' ? 'Scripts Directory' : data.path}
 				</h1>
 			</header>
 
