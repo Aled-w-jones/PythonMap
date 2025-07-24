@@ -1,13 +1,19 @@
 <script>
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
 	import { base } from '$app/paths';
+	import { marked } from 'marked';
 	
-	export let data;
+	let notepad = null;
+	let content = '';
+	let readmeContent = null;
+	let loading = true;
+	let error = null;
 	
 	let codeElement;
-	let showReadme = !!data.readmeContent;
+	let showReadme = false;
 	let readmeCollapsed = false;
 	let readmeMinimized = false;
 	let splitContainer;
@@ -18,7 +24,59 @@
 	// Register Python language
 	hljs.registerLanguage('python', python);
 	
-	onMount(() => {
+	onMount(async () => {
+		const slug = $page.params.slug;
+		
+		try {
+			// Load notepads metadata
+			const notepadsResponse = await fetch(`${base}/data/notepads.json`);
+			if (!notepadsResponse.ok) throw new Error('Failed to load notepads');
+			
+			const notepads = await notepadsResponse.json();
+			notepad = notepads.find(n => n.id === slug);
+			
+			if (!notepad) {
+				error = 'Notepad not found';
+				loading = false;
+				return;
+			}
+			
+			// Load the Python file content - we'll need to add this to the static data
+			// For now, we'll create a simple API-like structure in static files
+			try {
+				// Try to load from a generated static file
+				const contentResponse = await fetch(`${base}/data/scripts/${notepad.filePath.replace(/[\/\\]/g, '_')}.txt`);
+				if (contentResponse.ok) {
+					content = await contentResponse.text();
+				} else {
+					// Fallback - we'll need to pre-generate these files during build
+					content = `// Content for ${notepad.title} would be loaded here`;
+				}
+			} catch (contentError) {
+				console.warn('Could not load script content:', contentError);
+				content = `// Content for ${notepad.title} could not be loaded`;
+			}
+			
+			// Load README if exists
+			if (notepad.readmeFile) {
+				try {
+					const readmeResponse = await fetch(`${base}/data/readmes/${notepad.readmeFile.replace(/[\/\\]/g, '_')}.html`);
+					if (readmeResponse.ok) {
+						readmeContent = await readmeResponse.text();
+						showReadme = true;
+					}
+				} catch (readmeError) {
+					console.warn('Could not load README:', readmeError);
+				}
+			}
+			
+		} catch (err) {
+			console.error('Error loading notepad:', err);
+			error = 'Failed to load notepad';
+		} finally {
+			loading = false;
+		}
+		
 		// Add entrance animation delay
 		setTimeout(() => {
 			pageLoaded = true;
@@ -29,7 +87,7 @@
 	});
 
 	function copyToClipboard() {
-		navigator.clipboard.writeText(data.content).then(() => {
+		navigator.clipboard.writeText(content).then(() => {
 			alert('Code copied to clipboard!');
 		});
 	}
@@ -72,9 +130,23 @@
 </script>
 
 <svelte:head>
-	<title>{data.notepad.title} - PythonMap</title>
+	<title>{notepad?.title || 'Loading...'} - PythonMap</title>
 </svelte:head>
 
+{#if loading}
+	<div class="container mx-auto px-4 py-8">
+		<div class="text-center py-12">
+			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading notepad...</p>
+		</div>
+	</div>
+{:else if error}
+	<div class="container mx-auto px-4 py-8">
+		<div class="text-center py-12">
+			<p class="text-red-500 text-lg">{error}</p>
+			<a href="{base}/notepads" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline mt-4 inline-block">&larr; Back to Notepads</a>
+		</div>
+	</div>
+{:else}
 <div class="container mx-auto px-4 py-8 max-w-none page-container" class:loaded={pageLoaded}>
 	<div class="mb-6">
 		<a href="{base}/notepads" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Notepads</a>
@@ -82,11 +154,11 @@
 	
 	<!-- Header Section -->
 	<header class="mb-6">
-		<h1 class="text-3xl font-bold mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary">{data.notepad.title}</h1>
-		<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">{data.notepad.description}</p>
+		<h1 class="text-3xl font-bold mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary">{notepad.title}</h1>
+		<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">{notepad.description}</p>
 		
 		<div class="flex flex-wrap gap-2 mb-4">
-			{#each data.notepad.tags as tag}
+			{#each notepad.tags as tag}
 				<span class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-secondary dark:text-vsc-text-secondary px-2 py-1 rounded text-sm">
 					{tag}
 				</span>
@@ -94,9 +166,9 @@
 		</div>
 		
 		<div class="flex flex-wrap gap-4 text-sm text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
-			<span>File: {data.notepad.filePath}</span>
-			<span>Dependencies: {data.notepad.dependencies.join(', ')}</span>
-			<span>Updated: {new Date(data.notepad.lastUpdated).toLocaleDateString()}</span>
+			<span>File: {notepad.filePath}</span>
+			<span>Dependencies: {notepad.dependencies.join(', ')}</span>
+			<span>Updated: {new Date(notepad.lastUpdated).toLocaleDateString()}</span>
 		</div>
 		
 		<!-- Action Buttons -->
@@ -108,7 +180,7 @@
 				📋 Copy Code
 			</button>
 			
-			{#if data.readmeContent}
+			{#if readmeContent}
 				<button 
 					on:click={toggleReadme}
 					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-4 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light"
@@ -124,21 +196,21 @@
 		<!-- Code Panel -->
 		<div 
 			class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col transition-all duration-300"
-			style="width: {showReadme && data.readmeContent && !readmeMinimized ? `${leftPanelWidth}%` : '100%'}"
+			style="width: {showReadme && readmeContent && !readmeMinimized ? `${leftPanelWidth}%` : '100%'}"
 		>
 			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
-				<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {data.notepad.filePath}</span>
+				<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {notepad.filePath}</span>
 			</div>
 			<div class="flex-1 overflow-auto">
 				<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
 					bind:this={codeElement}
 					class="language-python block p-4 text-sm leading-relaxed"
-				>{data.content}</code></pre>
+				>{content}</code></pre>
 			</div>
 		</div>
 
 		<!-- Resizer Bar -->
-		{#if showReadme && data.readmeContent && !readmeMinimized}
+		{#if showReadme && readmeContent && !readmeMinimized}
 			<div 
 				class="w-1 bg-vsc-light-border dark:bg-vsc-border-light hover:bg-vsc-light-accent-blue dark:hover:bg-vsc-accent-blue cursor-col-resize transition-colors flex-shrink-0"
 				on:mousedown={startResize}
@@ -149,7 +221,7 @@
 		{/if}
 
 		<!-- README Panel (conditionally shown) -->
-		{#if showReadme && data.readmeContent}
+		{#if showReadme && readmeContent}
 			<div 
 				class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col transition-all duration-300"
 				style="width: {readmeMinimized ? '48px' : `${100 - leftPanelWidth}%`}"
@@ -187,7 +259,7 @@
 					<div class="flex-1 overflow-auto">
 						{#if !readmeCollapsed}
 							<div class="p-4 prose prose-invert max-w-none">
-								{@html data.readmeContent}
+								{@html readmeContent}
 							</div>
 						{:else}
 							<div class="p-4 text-center text-vsc-light-text-secondary dark:text-vsc-text-secondary">
@@ -200,6 +272,7 @@
 		{/if}
 	</div>
 </div>
+{/if}
 
 <style>
 	/* Enhanced prose styles for README content */

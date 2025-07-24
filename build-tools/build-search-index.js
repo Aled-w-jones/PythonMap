@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import { readFile, writeFile, readdir, stat } from 'fs/promises';
+import { readFile, writeFile, readdir, stat, mkdir } from 'fs/promises';
 import { join, extname } from 'path';
+import { marked } from 'marked';
 
 async function buildSearchIndex() {
     const searchIndex = [];
@@ -42,8 +43,12 @@ async function buildSearchIndex() {
         const notepadsFileData = await readFile('data/notepads.json', 'utf-8');
         await writeFile('static/data/notepads.json', notepadsFileData);
         
+        // Create static files for script content and README files
+        await createStaticContentFiles(notepads);
+        
         console.log(`Search index built with ${searchIndex.length} items`);
         console.log('Notepads data copied to static directory');
+        console.log('Static content files created');
         
     } catch (error) {
         console.error('Error building search index:', error);
@@ -112,6 +117,39 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
         }
     } catch (error) {
         console.warn(`Warning: Could not read directory ${dirPath}`);
+    }
+}
+
+async function createStaticContentFiles(notepads) {
+    try {
+        // Ensure directories exist
+        await mkdir('static/data/scripts', { recursive: true });
+        await mkdir('static/data/readmes', { recursive: true });
+        
+        for (const notepad of notepads) {
+            try {
+                // Create static file for script content
+                const content = await readFile(notepad.filePath, 'utf-8');
+                const scriptFileName = notepad.filePath.replace(/[\/\\]/g, '_') + '.txt';
+                await writeFile(`static/data/scripts/${scriptFileName}`, content);
+                
+                // Create static file for README if exists
+                if (notepad.readmeFile) {
+                    try {
+                        const readmeText = await readFile(notepad.readmeFile, 'utf-8');
+                        const readmeHtml = marked(readmeText);
+                        const readmeFileName = notepad.readmeFile.replace(/[\/\\]/g, '_') + '.html';
+                        await writeFile(`static/data/readmes/${readmeFileName}`, readmeHtml);
+                    } catch (readmeError) {
+                        console.warn(`Warning: Could not process README file ${notepad.readmeFile}`);
+                    }
+                }
+            } catch (error) {
+                console.warn(`Warning: Could not create static files for ${notepad.filePath}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error creating static content files:', error);
     }
 }
 
