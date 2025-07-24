@@ -152,8 +152,12 @@
 			if (item.type === 'notepad') return false;
 			
 			if (item.filePath) {
-				const normalizedPath = item.filePath.replace(/\\/g, '/').replace('scripts/', '');
-				return normalizedPath === path;
+				// Normalize both paths for comparison
+				const normalizedItemPath = item.filePath.replace(/\\/g, '/').replace(/^scripts\//, '');
+				const normalizedSearchPath = path.replace(/\\/g, '/');
+				
+				console.log('Comparing paths:', normalizedItemPath, 'vs', normalizedSearchPath);
+				return normalizedItemPath === normalizedSearchPath;
 			}
 			return false;
 		});
@@ -456,7 +460,7 @@
 		<!-- Breadcrumbs -->
 		<nav class="mb-6">
 			<div class="flex items-center space-x-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
-				<a href="{base}/" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Home</a>
+				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Home</a>
 				<span>/</span>
 				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue">Scripts</a>
 				{#if data.breadcrumbs.length > 0}
