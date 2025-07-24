@@ -12,7 +12,7 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'index.html',
+			fallback: '404.html',
 			precompress: false,
 			strict: false
 		}),
@@ -37,6 +37,11 @@ const config = {
 				'/notepads/data_analysis_utils'
 			],
 			crawl: true
+		},
+		csp: {
+			directives: {
+				'script-src': ['self']
+			}
 		}
 	}
 };
