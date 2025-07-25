@@ -16,6 +16,7 @@
     "title": "Data Analysis Utilities for Pandas",
     "description": "Helper functions for data manipulation and cleaning using Pandas. Includes trend analysis, outlier filtering, and data export capabilities.",
     "filePath": "scripts/project_x/util.py",
+    "readmeFile": "scripts/project_x/README.md",
     "tags": ["data science", "pandas", "intermediate"],
     "author": "PythonMap",
     "lastUpdated": "2025-07-23T22:00:00Z",

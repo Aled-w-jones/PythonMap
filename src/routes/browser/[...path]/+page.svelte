@@ -546,15 +546,6 @@
 				</h1>
 			</header>
 
-			<!-- README Content -->
-			{#if data.readmeContent}
-				<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg p-6 mb-8">
-					<div class="prose prose-invert max-w-none">
-						{@html data.readmeContent}
-					</div>
-				</div>
-			{/if}
-
 			<!-- Directory Listing -->
 			<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg">
 				<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light">
@@ -604,6 +595,15 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- README Content -->
+			{#if data.readmeContent}
+				<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg p-6 mt-8">
+					<div class="prose prose-invert max-w-none">
+						{@html data.readmeContent}
+					</div>
+				</div>
+			{/if}
 
 		{:else if data.type === 'file'}
 			<!-- File View -->

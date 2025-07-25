@@ -22,7 +22,6 @@ async function buildSearchIndex() {
                     id: notepad.id,
                     title: notepad.title,
                     description: notepad.description,
-                    content: content,
                     tags: notepad.tags,
                     filePath: notepad.filePath,
                     url: `/notepads/${notepad.id}`
@@ -77,7 +76,6 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                             type: 'readme',
                             title: `README - ${item}`,
                             description: `README file for ${item} directory`,
-                            content: processedReadmeContent,
                             filePath: readmePath,
                             url: `/browser/${relativePath}`
                         });
@@ -103,7 +101,6 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                                 type: type,
                                 title: item,
                                 description: `${type} file in ${basePath || 'scripts'}`,
-                                content: content,
                                 filePath: fullPath,
                                 url: `/browser/${relativePath}`
                             });
@@ -116,7 +113,6 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                                     type: 'readme',
                                     title: `README - ${item.replace(/\.md$/i, '')}`,
                                     description: `Processed README file for ${item}`,
-                                    content: processedContent,
                                     filePath: fullPath,
                                     url: `/browser/${relativePath}`
                                 });

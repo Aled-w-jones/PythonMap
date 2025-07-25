@@ -13,13 +13,8 @@
 	export let isPanelOpen = false;
 	
 	onMount(async () => {
-		// Load panel state from localStorage
-		if (browser) {
-			const savedState = localStorage.getItem('browserSearchPanelOpen');
-			if (savedState !== null) {
-				isPanelOpen = JSON.parse(savedState);
-			}
-		}
+		// Set panel closed by default, ignore localStorage
+		isPanelOpen = false;
 		
 		try {
 			const response = await fetch(`${base}/data/search_index.json`);
@@ -58,7 +53,6 @@
 				return (
 					item.title.toLowerCase().includes(query) ||
 					item.description.toLowerCase().includes(query) ||
-					item.content.toLowerCase().includes(query) ||
 					(item.tags && item.tags.some(tag => tag.toLowerCase().includes(query)))
 				);
 			}
@@ -89,10 +83,6 @@
 	
 	function togglePanel() {
 		isPanelOpen = !isPanelOpen;
-		// Save panel state to localStorage
-		if (browser) {
-			localStorage.setItem('browserSearchPanelOpen', JSON.stringify(isPanelOpen));
-		}
 	}
 	
 	function getResultIcon(type) {

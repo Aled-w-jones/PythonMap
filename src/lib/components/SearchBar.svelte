@@ -53,7 +53,6 @@
 				return (
 					item.title.toLowerCase().includes(query) ||
 					item.description.toLowerCase().includes(query) ||
-					item.content.toLowerCase().includes(query) ||
 					(item.tags && item.tags.some(tag => tag.toLowerCase().includes(query)))
 				);
 			}
