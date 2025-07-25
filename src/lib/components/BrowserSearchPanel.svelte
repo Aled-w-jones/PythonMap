@@ -18,9 +18,6 @@
 	$: currentAvailableTags = $availableTags;
 	
 	onMount(async () => {
-		// Set panel closed by default, ignore localStorage
-		isPanelOpen = false;
-		
 		try {
 			await loadSearchIndex();
 		} catch (error) {
