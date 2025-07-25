@@ -6,6 +6,7 @@
 	import python from 'highlight.js/lib/languages/python';
 	import { base } from '$app/paths';
 	import { marked } from 'marked';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	
 	export let data;
 	
@@ -122,8 +123,8 @@
 
 {#if loading}
 	<div class="container mx-auto px-4 py-8">
-		<div class="text-center py-12">
-			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading notepad...</p>
+		<div class="flex justify-center py-12">
+			<LoadingSpinner message="Loading notepad... this could take up to 20 seconds... free hosting in use" />
 		</div>
 	</div>
 {:else if error}

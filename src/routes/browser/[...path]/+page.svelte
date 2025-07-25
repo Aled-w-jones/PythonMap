@@ -523,7 +523,7 @@
 	<div class="container mx-auto px-4 py-4 lg:py-8">
 		{#if loading}
 			<div class="flex items-center justify-center py-12">
-				<LoadingSpinner message="Loading content..." />
+				<LoadingSpinner message="Loading content... this could take up to 20 seconds... free hosting in use" />
 			</div>
 		{:else if error}
 			<div class="text-center py-12">

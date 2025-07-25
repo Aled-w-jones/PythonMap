@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	
 	let notepads = [];
 	let loading = true;
@@ -32,8 +33,8 @@
 	</header>
 
 	{#if loading}
-		<div class="text-center py-12">
-			<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading notepads...</p>
+		<div class="flex justify-center py-12">
+			<LoadingSpinner message="Loading notepads... this could take up to 20 seconds... free hosting in use" />
 		</div>
 	{:else}
 		<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
