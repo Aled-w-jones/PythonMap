@@ -1,7 +1,11 @@
 // Service Worker Registration
 if ('serviceWorker' in navigator) {
 	window.addEventListener('load', () => {
-		navigator.serviceWorker.register('/service-worker.js')
+		// For GitHub Pages: detect if we're in a subdirectory
+		const pathname = window.location.pathname;
+		const basePath = pathname.includes('/PythonMap') ? '/PythonMap' : '';
+		
+		navigator.serviceWorker.register(basePath + '/service-worker.js')
 			.then((registration) => {
 				console.log('[App] Service Worker registered:', registration.scope);
 				

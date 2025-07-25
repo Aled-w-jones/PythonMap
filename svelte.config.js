@@ -34,7 +34,9 @@ const config = {
 				'/browser/scripts/project_x/util.py',
 				'/browser/scripts/project_x/README.md',
 				'/notepads/file_automation',
-				'/notepads/data_analysis_utils'
+				'/notepads/data_analysis_utils',
+				'/notepads/web_scraper_processor',
+				'/notepads/advanced_data_analytics'
 			],
 			crawl: true
 		},

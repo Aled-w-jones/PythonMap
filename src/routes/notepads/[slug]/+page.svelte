@@ -7,10 +7,12 @@
 	import { base } from '$app/paths';
 	import { marked } from 'marked';
 	
-	let notepad = null;
-	let content = '';
-	let readmeContent = null;
-	let loading = true;
+	export let data;
+	
+	let notepad = data.notepad;
+	let content = data.content;
+	let readmeContent = data.readmeContent;
+	let loading = false;
 	let error = null;
 	
 	let codeElement;
@@ -31,56 +33,9 @@
 	hljs.registerLanguage('python', python);
 	
 	onMount(async () => {
-		const slug = $page.params.slug;
-		
-		try {
-			// Load notepads metadata
-			const notepadsResponse = await fetch(`${base}/data/notepads.json`);
-			if (!notepadsResponse.ok) throw new Error('Failed to load notepads');
-			
-			const notepads = await notepadsResponse.json();
-			notepad = notepads.find(n => n.id === slug);
-			
-			if (!notepad) {
-				error = 'Notepad not found';
-				loading = false;
-				return;
-			}
-			
-			// Load the Python file content - we'll need to add this to the static data
-			// For now, we'll create a simple API-like structure in static files
-			try {
-				// Try to load from a generated static file
-				const contentResponse = await fetch(`${base}/data/scripts/${notepad.filePath.replace(/[\/\\]/g, '_')}.txt`);
-				if (contentResponse.ok) {
-					content = await contentResponse.text();
-				} else {
-					// Fallback - we'll need to pre-generate these files during build
-					content = `// Content for ${notepad.title} would be loaded here`;
-				}
-			} catch (contentError) {
-				console.warn('Could not load script content:', contentError);
-				content = `// Content for ${notepad.title} could not be loaded`;
-			}
-			
-			// Load README if exists
-			if (notepad.readmeFile) {
-				try {
-					const readmeResponse = await fetch(`${base}/data/readmes/${notepad.readmeFile.replace(/[\/\\]/g, '_')}.html`);
-					if (readmeResponse.ok) {
-						readmeContent = await readmeResponse.text();
-						showReadme = true;
-					}
-				} catch (readmeError) {
-					console.warn('Could not load README:', readmeError);
-				}
-			}
-			
-		} catch (err) {
-			console.error('Error loading notepad:', err);
-			error = 'Failed to load notepad';
-		} finally {
-			loading = false;
+		// Set showReadme if we have readme content
+		if (readmeContent) {
+			showReadme = true;
 		}
 		
 		// Check if mobile
