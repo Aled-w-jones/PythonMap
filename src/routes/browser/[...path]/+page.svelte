@@ -65,22 +65,17 @@
 			loading = false;
 		}
 		
-		// Load panel state from localStorage
-		if (browser) {
-			const savedState = localStorage.getItem('browserSearchPanelOpen');
-			if (savedState !== null) {
-				isPanelOpen = JSON.parse(savedState);
+		// Set panel closed by default
+		isPanelOpen = false;
+		
+		// Check if mobile
+		isMobile = window.innerWidth < 1024; // lg breakpoint
+		window.addEventListener('resize', () => {
+			isMobile = window.innerWidth < 1024;
+			if (!isMobile && showMobileModal) {
+				showMobileModal = false;
 			}
-			
-			// Check if mobile
-			isMobile = window.innerWidth < 1024; // lg breakpoint
-			window.addEventListener('resize', () => {
-				isMobile = window.innerWidth < 1024;
-				if (!isMobile && showMobileModal) {
-					showMobileModal = false;
-				}
-			});
-		}
+		});
 	});
 	
 	// React to path changes
@@ -109,18 +104,30 @@
 						// File view - get actual filename from path
 						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
 						
-						// Check if this is a markdown file that should be rendered as HTML
-						let displayContent = item.content;
+						// Load content from static files
+						let displayContent = '';
 						let isMarkdownRendered = false;
 						
-						if (item.type === 'markdown') {
-							// For raw markdown files, keep them as raw markdown for direct viewing
-							// Only render as HTML in split view context, not when viewing the file directly
-							displayContent = item.content;
-							isMarkdownRendered = false;
-						} else if (item.type === 'readme') {
-							// This is already processed HTML
-							isMarkdownRendered = true;
+						try {
+							if (item.type === 'readme') {
+								// Load processed HTML from static files
+								const readmeFileName = item.filePath.replace(/[\/\\]/g, '_') + '.html';
+								const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
+								if (response.ok) {
+									displayContent = await response.text();
+									isMarkdownRendered = true;
+								}
+							} else {
+								// Load raw content from static files
+								const scriptFileName = item.filePath.replace(/[\/\\]/g, '_') + '.txt';
+								const response = await fetch(`${base}/data/scripts/${scriptFileName}`);
+								if (response.ok) {
+									displayContent = await response.text();
+								}
+							}
+						} catch (error) {
+							console.error('Error loading file content:', error);
+							displayContent = 'Error loading file content';
 						}
 						
 						// Special handling for README files viewed directly
@@ -133,7 +140,15 @@
 								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
 							);
 							if (processedVersion) {
-								readmeContent = processedVersion.content;
+								try {
+									const readmeFileName = processedVersion.filePath.replace(/[\/\\]/g, '_') + '.html';
+									const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
+									if (response.ok) {
+										readmeContent = await response.text();
+									}
+								} catch (error) {
+									console.error('Error loading processed README content:', error);
+								}
 							}
 						}
 						
@@ -261,7 +276,20 @@
 		}
 		
 		console.log('Found README item:', readmeItem ? readmeItem.filePath : 'none');
-		return readmeItem ? readmeItem.content : null;
+		
+		if (readmeItem) {
+			try {
+				// Load processed HTML from static files
+				const readmeFileName = readmeItem.filePath.replace(/[\/\\]/g, '_') + '.html';
+				const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
+				if (response.ok) {
+					return await response.text();
+				}
+			} catch (error) {
+				console.error('Error loading README content:', error);
+			}
+		}
+		return null;
 	}
 	
 	async function buildDirectoryListing(searchIndex, dirPath) {
@@ -388,7 +416,16 @@
 			}
 			
 			if (readmeItem) {
-				readmeContent = readmeItem.content;
+				try {
+					// Load processed HTML from static files
+					const readmeFileName = readmeItem.filePath.replace(/[\/\\]/g, '_') + '.html';
+					const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
+					if (response.ok) {
+						readmeContent = await response.text();
+					}
+				} catch (error) {
+					console.error('Error loading directory README content:', error);
+				}
 			}
 		}
 		

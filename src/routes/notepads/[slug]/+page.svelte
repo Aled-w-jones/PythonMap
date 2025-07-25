@@ -259,11 +259,11 @@
 
 		<!-- Resizer Bar -->
 		{#if showReadme && readmeContent && !readmeMinimized}
+			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div 
 				class="w-1 bg-vsc-light-border dark:bg-vsc-border-light hover:bg-vsc-light-accent-blue dark:hover:bg-vsc-accent-blue cursor-col-resize transition-colors flex-shrink-0"
 				on:mousedown={startResize}
 				role="separator"
-				tabindex="0"
 				title="Drag to resize panels"
 			></div>
 		{/if}
