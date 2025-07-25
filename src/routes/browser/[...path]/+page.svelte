@@ -9,6 +9,9 @@
 	import json from 'highlight.js/lib/languages/json';
 	import markdown from 'highlight.js/lib/languages/markdown';
 	import BrowserSearchPanel from '$lib/components/BrowserSearchPanel.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import { searchIndex, loadSearchIndex } from '$lib/stores/search.js';
+	import { getCachedFileContent } from '$lib/stores/fileCache.js';
 	
 	// Client-side data loading
 	let data = null;
@@ -51,14 +54,10 @@
 	hljs.registerLanguage('json', json);
 	hljs.registerLanguage('markdown', markdown);
 	
-	let searchIndex = null;
-	
-	// Load search index once
+	// Load search index using centralized store
 	onMount(async () => {
 		try {
-			const searchResponse = await fetch(`${base}/data/search_index.json`);
-			if (!searchResponse.ok) throw new Error('Failed to load search index');
-			searchIndex = await searchResponse.json();
+			await loadSearchIndex();
 		} catch (err) {
 			console.error('Error loading search index:', err);
 			error = 'Failed to load search index';
@@ -79,7 +78,7 @@
 	});
 	
 	// React to path changes
-	$: if (searchIndex && $page.params.path !== undefined) {
+	$: if ($searchIndex.length > 0 && $page.params.path !== undefined) {
 		loadPageData($page.params.path || '');
 	}
 	
@@ -93,10 +92,10 @@
 			
 			if (!requestedPath || requestedPath === '' || requestedPath === 'scripts') {
 				// Show scripts directory listing
-				data = await buildDirectoryListing(searchIndex, 'scripts');
+				data = await buildDirectoryListing($searchIndex, 'scripts');
 			} else {
 				// Try to find specific file or directory
-				const item = findItemInSearchIndex(searchIndex, requestedPath);
+				const item = findItemInSearchIndex($searchIndex, requestedPath);
 				console.log('Found item:', item);
 				
 				if (item) {
@@ -110,20 +109,10 @@
 						
 						try {
 							if (item.type === 'readme') {
-								// Load processed HTML from static files
-								const readmeFileName = item.filePath.replace(/[\/\\]/g, '_') + '.html';
-								const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
-								if (response.ok) {
-									displayContent = await response.text();
-									isMarkdownRendered = true;
-								}
+								displayContent = await getCachedFileContent(item.filePath, 'readme');
+								isMarkdownRendered = true;
 							} else {
-								// Load raw content from static files
-								const scriptFileName = item.filePath.replace(/[\/\\]/g, '_') + '.txt';
-								const response = await fetch(`${base}/data/scripts/${scriptFileName}`);
-								if (response.ok) {
-									displayContent = await response.text();
-								}
+								displayContent = await getCachedFileContent(item.filePath, 'script');
 							}
 						} catch (error) {
 							console.error('Error loading file content:', error);
@@ -131,21 +120,17 @@
 						}
 						
 						// Special handling for README files viewed directly
-						let readmeContent = await findReadmeForFile(searchIndex, item);
+						let readmeContent = await findReadmeForFile($searchIndex, item);
 						
 						// If this IS a README file, find its processed HTML version for the right panel
 						if (fileName.toLowerCase().includes('readme') && getExtensionFromPath(item.filePath) === 'md') {
-							const processedVersion = searchIndex.find(htmlItem => 
+							const processedVersion = $searchIndex.find(htmlItem => 
 								htmlItem.type === 'readme' && 
 								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
 							);
 							if (processedVersion) {
 								try {
-									const readmeFileName = processedVersion.filePath.replace(/[\/\\]/g, '_') + '.html';
-									const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
-									if (response.ok) {
-										readmeContent = await response.text();
-									}
+									readmeContent = await getCachedFileContent(processedVersion.filePath, 'readme');
 								} catch (error) {
 									console.error('Error loading processed README content:', error);
 								}
@@ -164,11 +149,11 @@
 						};
 					} else {
 						// Directory view
-						data = await buildDirectoryListing(searchIndex, requestedPath);
+						data = await buildDirectoryListing($searchIndex, requestedPath);
 					}
 				} else {
 					// Try as directory
-					data = await buildDirectoryListing(searchIndex, requestedPath);
+					data = await buildDirectoryListing($searchIndex, requestedPath);
 					if (!data.items || data.items.length === 0) {
 						throw new Error('Path not found');
 					}
@@ -279,12 +264,7 @@
 		
 		if (readmeItem) {
 			try {
-				// Load processed HTML from static files
-				const readmeFileName = readmeItem.filePath.replace(/[\/\\]/g, '_') + '.html';
-				const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
-				if (response.ok) {
-					return await response.text();
-				}
+				return await getCachedFileContent(readmeItem.filePath, 'readme');
 			} catch (error) {
 				console.error('Error loading README content:', error);
 			}
@@ -417,12 +397,7 @@
 			
 			if (readmeItem) {
 				try {
-					// Load processed HTML from static files
-					const readmeFileName = readmeItem.filePath.replace(/[\/\\]/g, '_') + '.html';
-					const response = await fetch(`${base}/data/readmes/${readmeFileName}`);
-					if (response.ok) {
-						readmeContent = await response.text();
-					}
+					readmeContent = await getCachedFileContent(readmeItem.filePath, 'readme');
 				} catch (error) {
 					console.error('Error loading directory README content:', error);
 				}
@@ -541,8 +516,8 @@
 <div class="flex-1 overflow-auto {isMobile && isPanelOpen ? 'hidden' : ''}">
 	<div class="container mx-auto px-4 py-4 lg:py-8">
 		{#if loading}
-			<div class="text-center py-12">
-				<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-lg">Loading...</p>
+			<div class="flex items-center justify-center py-12">
+				<LoadingSpinner message="Loading content..." />
 			</div>
 		{:else if error}
 			<div class="text-center py-12">

@@ -2,31 +2,26 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
+	import { searchIndex, availableTags, loadSearchIndex } from '$lib/stores/search.js';
 	
 	export let mode = 'full'; // 'full', 'collapsed', or 'panel'
 	
 	let searchQuery = '';
 	let searchResults = [];
-	let searchIndex = [];
+	let currentSearchIndex = [];
+	let currentAvailableTags = [];
 	let isSearching = false;
 	let showResults = false;
 	let selectedTag = '';
-	let availableTags = [];
 	let isExpanded = false;
+	
+	// Subscribe to search store
+	$: currentSearchIndex = $searchIndex;
+	$: currentAvailableTags = $availableTags;
 	
 	onMount(async () => {
 		try {
-			const response = await fetch(`${base}/data/search_index.json`);
-			searchIndex = await response.json();
-			
-			// Extract unique tags
-			const tagSet = new Set();
-			searchIndex.forEach(item => {
-				if (item.tags) {
-					item.tags.forEach(tag => tagSet.add(tag));
-				}
-			});
-			availableTags = Array.from(tagSet).sort();
+			await loadSearchIndex();
 		} catch (error) {
 			console.error('Error loading search index:', error);
 		}
@@ -42,7 +37,7 @@
 		isSearching = true;
 		const query = searchQuery.toLowerCase().trim();
 		
-		searchResults = searchIndex.filter(item => {
+		searchResults = currentSearchIndex.filter(item => {
 			// Tag filter
 			if (selectedTag && (!item.tags || !item.tags.includes(selectedTag))) {
 				return false;
@@ -158,7 +153,7 @@
 							class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded px-3 py-2 text-sm text-vsc-light-text-primary dark:text-vsc-text-primary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue"
 						>
 							<option value="">All Tags</option>
-							{#each availableTags as tag}
+							{#each currentAvailableTags as tag}
 								<option value={tag}>{tag}</option>
 							{/each}
 						</select>
@@ -204,7 +199,7 @@
 					class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg px-4 py-3 text-vsc-light-text-primary dark:text-vsc-text-primary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue focus:ring-1 focus:ring-vsc-light-accent-blue dark:focus:ring-vsc-accent-blue"
 				>
 					<option value="">All Tags</option>
-					{#each availableTags as tag}
+					{#each currentAvailableTags as tag}
 						<option value={tag}>{tag}</option>
 					{/each}
 				</select>
