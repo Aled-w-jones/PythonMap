@@ -105,6 +105,12 @@
 	function showMobileCode() {
 		mobileModalContent = 'code';
 		showMobileModal = true;
+		// Highlight code after modal opens
+		setTimeout(() => {
+			if (codeElement) {
+				hljs.highlightElement(codeElement);
+			}
+		}, 100);
 	}
 	
 	function showMobileDocumentation() {
@@ -341,6 +347,7 @@
 			<div class="flex-1 overflow-auto">
 				{#if mobileModalContent === 'code'}
 					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
+						bind:this={codeElement}
 						class="language-python block p-3 text-xs leading-relaxed"
 					>{content}</code></pre>
 				{:else if mobileModalContent === 'documentation'}
@@ -355,7 +362,15 @@
 			<!-- Modal Footer -->
 			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-3 border-t border-vsc-light-border dark:border-vsc-border-light flex gap-2 flex-shrink-0">
 				<button 
-					on:click={() => mobileModalContent = 'code'}
+					on:click={() => {
+						mobileModalContent = 'code';
+						// Highlight code after switching to code view
+						setTimeout(() => {
+							if (codeElement) {
+								hljs.highlightElement(codeElement);
+							}
+						}, 50);
+					}}
 					class="px-4 py-2 rounded transition-colors {mobileModalContent === 'code' ? 'bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white' : 'bg-vsc-light-bg-medium dark:bg-vsc-bg-medium text-vsc-light-text-primary dark:text-vsc-text-primary border border-vsc-light-border dark:border-vsc-border-light'}"
 				>
 					💻 Code
