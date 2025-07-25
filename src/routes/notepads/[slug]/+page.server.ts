@@ -39,10 +39,12 @@ export async function load({ params }) {
 		error(500, 'Could not load script content');
 	}
 	
-	// Load README content if it exists
+	// Load README content if it exists (from processed HTML files)
 	let readmeContent = null;
 	if (notepad.readmeFile) {
-		readmeContent = await loadFileContent(notepad.readmeFile);
+		// Convert path to the processed HTML filename
+		const processedReadmeFile = `static/data/readmes/${notepad.readmeFile.replace(/[\/\\]/g, '_')}.html`;
+		readmeContent = await loadFileContent(processedReadmeFile);
 	}
 	
 	return {
