@@ -491,6 +491,12 @@
 	function showMobileCode() {
 		mobileModalContent = 'code';
 		showMobileModal = true;
+		// Highlight code after modal opens
+		setTimeout(() => {
+			if (codeElement && data?.type === 'file') {
+				hljs.highlightElement(codeElement);
+			}
+		}, 100);
 	}
 	
 	function showMobileDocumentation() {
@@ -508,7 +514,7 @@
 </svelte:head>
 
 <!-- Search Panel -->
-<div class="{isMobile ? (isPanelOpen ? 'fixed inset-0 z-40' : 'hidden') : (isPanelOpen ? 'w-80' : 'w-12')} {isMobile ? '' : 'flex-shrink-0'} transition-all duration-300">
+<div class="{isMobile ? (isPanelOpen ? 'fixed inset-0 z-40' : 'hidden') : (isPanelOpen ? 'w-80' : 'hidden')} {isMobile ? '' : 'flex-shrink-0'} transition-all duration-300">
 	<BrowserSearchPanel bind:isPanelOpen />
 </div>
 
@@ -526,8 +532,18 @@
 			</div>
 		{:else if data}
 		<!-- Navigation -->
-		<div class="mb-8">
+		<div class="mb-8 flex items-center justify-between">
 			<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Browser</a>
+			{#if !isMobile}
+				<button 
+					on:click={() => isPanelOpen = !isPanelOpen}
+					class="flex items-center gap-2 px-3 py-1.5 bg-vsc-light-bg-light dark:bg-vsc-bg-light border border-vsc-light-border dark:border-vsc-border-light rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-medium transition-colors text-sm"
+					title="Toggle search panel"
+				>
+					<span class="text-base">🔍</span>
+					<span class="text-vsc-light-text-primary dark:text-vsc-text-primary">Search</span>
+				</button>
+			{/if}
 		</div>
 		
 		<!-- Breadcrumbs -->
@@ -805,6 +821,7 @@
 			<div class="flex-1 overflow-auto">
 				{#if mobileModalContent === 'code'}
 					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
+						bind:this={codeElement}
 						class="{getLanguageClass(data.extension)} block p-3 text-xs leading-relaxed"
 					>{data.content}</code></pre>
 				{:else if mobileModalContent === 'documentation'}
@@ -819,7 +836,15 @@
 			<!-- Modal Footer -->
 			<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-3 border-t border-vsc-light-border dark:border-vsc-border-light flex gap-2 flex-shrink-0">
 				<button 
-					on:click={() => mobileModalContent = 'code'}
+					on:click={() => {
+						mobileModalContent = 'code';
+						// Highlight code after switching to code view
+						setTimeout(() => {
+							if (codeElement && data?.type === 'file') {
+								hljs.highlightElement(codeElement);
+							}
+						}, 50);
+					}}
 					class="px-4 py-2 rounded transition-colors {mobileModalContent === 'code' ? 'bg-vsc-light-accent-blue dark:bg-vsc-accent-blue text-white' : 'bg-vsc-light-bg-medium dark:bg-vsc-bg-medium text-vsc-light-text-primary dark:text-vsc-text-primary border border-vsc-light-border dark:border-vsc-border-light'}"
 				>
 					💻 Code
