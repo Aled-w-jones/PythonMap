@@ -30,9 +30,10 @@
 	let showMobileModal = false;
 	let mobileModalContent = 'code'; // 'code' or 'documentation'
 	
-	// Check if this file has README.md for split view OR if this IS a README file that should show split view
+	// Check if this file has README.md for split view (but exclude README files themselves)
 	$: isFileWithReadme = data?.type === 'file' && 
-		(data?.readmeContent || (data?.name?.toLowerCase().includes('readme') && data?.extension === 'md'));
+		data?.readmeContent && 
+		!(data?.name?.toLowerCase().includes('readme') && data?.extension === 'md');
 	
 	// Debug logging
 	$: if (data) {
