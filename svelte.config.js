@@ -2,7 +2,7 @@ import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const dev = process.argv.includes('dev');
-const base = dev ? '' : process.env.BASE_PATH || '';
+const base = dev ? '' : (process.env.BASE_PATH || '').replace(/\/$/, '');
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -30,11 +30,14 @@ const config = {
 				'/notepads',
 				'/browser',
 				'/browser/scripts',
-				'/browser/scripts/script_a.py',
+				'/browser/scripts/arcgis_utils.py',
 				'/browser/scripts/project_x',
 				'/browser/scripts/project_x/util.py',
 				'/browser/scripts/project_x/README.md',
-				'/notepads/file_automation',
+				'/browser/scripts/project_y',
+				'/browser/scripts/project_y/data_analyzer.py',
+				'/browser/scripts/project_y/README.md',
+				'/notepads/arcgis_utils',
 				'/notepads/data_analysis_utils',
 				'/notepads/web_scraper_processor',
 				'/notepads/advanced_data_analytics'
