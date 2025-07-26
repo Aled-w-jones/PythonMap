@@ -38,15 +38,15 @@ async function buildSearchIndex() {
         await writeFile('data/search_index.json', JSON.stringify(searchIndex, null, 2));
         await writeFile('static/data/search_index.json', JSON.stringify(searchIndex, null, 2));
         
-        // Also copy notepads.json to static directory for client-side access
-        const notepadsFileData = await readFile('data/notepads.json', 'utf-8');
-        await writeFile('static/data/notepads.json', notepadsFileData);
+        // Note: notepads.json is now embedded at build time, no longer copied to static
+        // const notepadsFileData = await readFile('data/notepads.json', 'utf-8');
+        // await writeFile('static/data/notepads.json', notepadsFileData);
         
         // Create static files for script content and README files
         await createStaticContentFiles(notepads);
         
         console.log(`Search index built with ${searchIndex.length} items`);
-        console.log('Notepads data copied to static directory');
+        console.log('Notepads data embedded at build time (no static copy needed)');
         console.log('Static content files created');
         
     } catch (error) {

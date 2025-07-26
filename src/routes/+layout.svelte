@@ -1,9 +1,12 @@
-<script>
+<script lang="ts">
 	import '../app.css';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
+	import type { LayoutData } from './$types';
+	
+	export let data: LayoutData;
 	
 	// Determine search display mode based on current route
 	$: isHomePage = $page.url.pathname === base + '/' || $page.url.pathname === base;
@@ -29,10 +32,10 @@
 			<!-- Contextual Search Bar -->
 			{#if isHomePage}
 				<!-- Full search for home page -->
-				<SearchBar mode="full" />
+				<SearchBar mode="full" searchIndex={data.searchIndex} />
 			{:else if isNotepadPage}
 				<!-- Collapsed/optional search for notepad pages -->
-				<SearchBar mode="collapsed" />
+				<SearchBar mode="collapsed" searchIndex={data.searchIndex} />
 			{/if}
 			<!-- Browser pages will have search in left panel, not header -->
 		</div>
