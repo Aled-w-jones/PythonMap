@@ -75,6 +75,7 @@
 			case 'markdown': return '📝';
 			case 'readme': return '📖';
 			case 'javascript': return '📜';
+			case 'json': return '📋';
 			default: return '📄';
 		}
 	}

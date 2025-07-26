@@ -45,6 +45,9 @@ async function buildSearchIndex() {
         // Create static files for script content and README files
         await createStaticContentFiles(notepads);
         
+        // Create static files for all indexed files (including JSON, etc.)
+        await createStaticFilesForAllIndexedFiles(searchIndex);
+        
         console.log(`Search index built with ${searchIndex.length} items`);
         console.log('Notepads data embedded at build time (no static copy needed)');
         console.log('Static content files created');
@@ -100,7 +103,8 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
                             const content = await readFile(fullPath, 'utf-8');
                             const type = extension === '.py' ? 'python' : 
                                        extension === '.md' ? 'markdown' : 
-                                       extension === '.js' ? 'javascript' : 'file';
+                                       extension === '.js' ? 'javascript' : 
+                                       extension === '.json' ? 'json' : 'file';
                             
                             searchIndex.push({
                                 type: type,
@@ -178,6 +182,35 @@ async function createStaticContentFiles(notepads) {
         }
     } catch (error) {
         console.error('Error creating static content files:', error);
+    }
+}
+
+async function createStaticFilesForAllIndexedFiles(searchIndex) {
+    try {
+        // Ensure directories exist
+        await mkdir('static/data/scripts', { recursive: true });
+        
+        // Process all indexed files that aren't already handled by createStaticContentFiles
+        for (const item of searchIndex) {
+            // Skip notepad entries (handled by createStaticContentFiles)
+            // Skip readme entries (also handled by createStaticContentFiles)
+            if (item.type === 'notepad' || item.type === 'readme') {
+                continue;
+            }
+            
+            // Handle other file types (json, python, javascript, markdown that aren't READMEs, etc.)
+            if (item.filePath && ['python', 'javascript', 'json', 'markdown', 'file'].includes(item.type)) {
+                try {
+                    const content = await readFile(item.filePath, 'utf-8');
+                    const staticFileName = item.filePath.replace(/[\/\\]/g, '_') + '.txt';
+                    await writeFile(`static/data/scripts/${staticFileName}`, content);
+                } catch (error) {
+                    console.warn(`Warning: Could not create static file for ${item.filePath}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error creating static files for indexed files:', error);
     }
 }
 

@@ -100,7 +100,7 @@
 				console.log('Found item:', item);
 				
 				if (item) {
-					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript' || item.type === 'readme') {
+					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript' || item.type === 'json' || item.type === 'readme') {
 						// File view - get actual filename from path
 						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
 						

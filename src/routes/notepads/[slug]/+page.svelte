@@ -556,7 +556,7 @@
 		{/if}
 		
 		<!-- Annotation Panel (Right Side) -->
-		{#if showAnnotations && annotations && !walkthroughActive}
+		{#if showAnnotations && annotations}
 			<!-- Resizer Bar for Annotations -->
 			<div 
 				class="w-1 bg-vsc-light-border dark:bg-vsc-border-light hover:bg-vsc-light-accent-blue dark:hover:bg-vsc-accent-blue cursor-col-resize transition-colors flex-shrink-0"

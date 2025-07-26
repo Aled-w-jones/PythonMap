@@ -65,9 +65,9 @@
     "url": "/browser/arcgis_utils_README.md"
   },
   {
-    "type": "file",
+    "type": "json",
     "title": "gis_config.json",
-    "description": "file file in scripts",
+    "description": "json file in scripts",
     "filePath": "scripts\\gis_config.json",
     "url": "/browser/gis_config.json"
   },
@@ -112,19 +112,5 @@
     "description": "markdown file in project_y",
     "filePath": "scripts\\project_y\\README.md",
     "url": "/browser/project_y/README.md"
-  },
-  {
-    "type": "markdown",
-    "title": "script_b_README.md",
-    "description": "markdown file in scripts",
-    "filePath": "scripts\\script_b_README.md",
-    "url": "/browser/script_b_README.md"
-  },
-  {
-    "type": "readme",
-    "title": "README - script_b_README",
-    "description": "Processed README file for script_b_README.md",
-    "filePath": "scripts\\script_b_README.md",
-    "url": "/browser/script_b_README.md"
   }
 ]

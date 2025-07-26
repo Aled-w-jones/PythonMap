@@ -1,0 +1,21 @@
+{
+    "portal_url": "https://gis.company.com/portal",
+    "service_account": "automation_user",
+    "service_name": "ArcGIS_Production",
+    "log_level": "INFO",
+    "log_file": "/var/log/gis/daily_process.log",
+    "environments": {
+        "development": {
+            "portal_url": "https://dev-gis.company.com/portal",
+            "service_account": "dev_service_account",
+            "service_name": "ArcGIS_Dev",
+            "log_level": "DEBUG"
+        },
+        "production": {
+            "portal_url": "https://gis.company.com/portal",
+            "service_account": "prod_service_account", 
+            "service_name": "ArcGIS_Prod",
+            "log_level": "INFO"
+        }
+    }
+}
