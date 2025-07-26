@@ -7,16 +7,20 @@
 	import { base } from '$app/paths';
 	import { marked } from 'marked';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import AnnotationPanel from '$lib/components/AnnotationPanel.svelte';
+	import WalkthroughMode from '$lib/components/WalkthroughMode.svelte';
 	
 	export let data;
 	
 	let notepad = data.notepad;
 	let content = data.content;
 	let readmeContent = data.readmeContent;
+	let annotations = data.annotations;
 	let loading = false;
 	let error = null;
 	
 	let codeElement;
+	let codeContainer;
 	let showReadme = false;
 	let readmeCollapsed = false;
 	let readmeMinimized = false;
@@ -29,6 +33,13 @@
 	let isMobile = false;
 	let showMobileModal = false;
 	let mobileModalContent = 'code'; // 'code' or 'documentation'
+	
+	// Annotation-specific state
+	let showAnnotations = false;
+	let hoveredLine = null;
+	let walkthroughActive = false;
+	let currentWalkthroughStep = 0;
+	let annotationPanelWidth = 30; // Percentage
 	
 	// Register Python language
 	hljs.registerLanguage('python', python);
@@ -53,11 +64,32 @@
 		// Add entrance animation delay
 		setTimeout(() => {
 			pageLoaded = true;
-			if (codeElement) {
-				hljs.highlightElement(codeElement);
-			}
+			highlightCode();
 		}, 100);
 	});
+	
+	function highlightCode() {
+		if (showAnnotations && annotations) {
+			// Highlight code in annotation mode
+			const codeElements = document.querySelectorAll('code.language-python');
+			codeElements.forEach(el => {
+				hljs.highlightElement(el);
+			});
+		} else if (codeElement) {
+			// Standard highlighting
+			hljs.highlightElement(codeElement);
+		}
+	}
+	
+	// Re-highlight when annotation mode changes
+	$: if (showAnnotations !== undefined) {
+		setTimeout(highlightCode, 50);
+	}
+	
+	// Debug reactive statement to track walkthrough step changes
+	$: if (walkthroughActive) {
+		console.log('Walkthrough step changed:', currentWalkthroughStep, 'Focus lines:', currentWalkthroughFocusLines);
+	}
 
 	function copyToClipboard() {
 		navigator.clipboard.writeText(content).then(() => {
@@ -121,6 +153,185 @@
 	function closeMobileModal() {
 		showMobileModal = false;
 	}
+	
+	// Annotation functions
+	function toggleAnnotations() {
+		showAnnotations = !showAnnotations;
+		if (!showAnnotations) {
+			walkthroughActive = false;
+		}
+	}
+	
+	function onLineHover(lineNumber) {
+		if (!showAnnotations || walkthroughActive) return;
+		hoveredLine = lineNumber;
+	}
+	
+	function onLineLeave() {
+		if (!walkthroughActive) {
+			hoveredLine = null;
+		}
+	}
+	
+	function startWalkthrough() {
+		walkthroughActive = true;
+		currentWalkthroughStep = 0;
+		showAnnotations = true;
+		
+		// Minimize documentation during walkthrough for better focus
+		if (showReadme) {
+			readmeMinimized = true;
+		}
+		
+		// Focus on the first step's line range with a delay to ensure rendering
+		setTimeout(() => {
+			if (annotations?.walkthrough?.steps?.[0]?.focus) {
+				const firstStepAnnotation = annotations.annotations.find(a => a.id === annotations.walkthrough.steps[0].focus);
+				if (firstStepAnnotation) {
+					highlightAnnotationLines(firstStepAnnotation);
+				}
+			}
+		}, 200);
+	}
+	
+	function exitWalkthrough() {
+		walkthroughActive = false;
+		currentWalkthroughStep = 0;
+		hoveredLine = null;
+	}
+	
+	function handleWalkthroughStep(event) {
+		currentWalkthroughStep = event.detail.step;
+		
+		// Wait for UI to update, then highlight and scroll
+		setTimeout(() => {
+			if (annotations?.walkthrough?.steps?.[currentWalkthroughStep]?.focus) {
+				const stepAnnotation = annotations.annotations.find(a => a.id === annotations.walkthrough.steps[currentWalkthroughStep].focus);
+				if (stepAnnotation) {
+					highlightAnnotationLines(stepAnnotation);
+				}
+			}
+		}, 100);
+	}
+	
+	function highlightAnnotationLines(annotation) {
+		const lines = annotation.lines || annotation.line;
+		if (typeof lines === 'string' && lines.includes('-')) {
+			const [start] = lines.split('-').map(n => parseInt(n));
+			hoveredLine = start;
+		} else if (typeof lines === 'number') {
+			hoveredLine = lines;
+		} else if (typeof lines === 'string') {
+			hoveredLine = parseInt(lines);
+		}
+		
+		// Scroll to the highlighted line
+		scrollToLine(hoveredLine);
+	}
+	
+	function scrollToLine(lineNumber) {
+		if (!lineNumber || !codeContainer) return;
+		
+		let targetLine;
+		
+		if (showAnnotations && annotations) {
+			// In annotation mode, find the line in the enhanced view
+			const lineElements = codeContainer.querySelectorAll('.code-line');
+			targetLine = lineElements[lineNumber - 1];
+		} else {
+			// In standard mode, we need to calculate based on line height
+			if (codeElement) {
+				const lineHeight = 24; // Approximate line height in pixels
+				const scrollTop = (lineNumber - 1) * lineHeight - codeContainer.clientHeight / 3;
+				codeContainer.scrollTo({
+					top: Math.max(0, scrollTop),
+					behavior: 'smooth'
+				});
+			}
+			return;
+		}
+		
+		if (targetLine) {
+			// Calculate the scroll position to center the line
+			const containerRect = codeContainer.getBoundingClientRect();
+			const lineRect = targetLine.getBoundingClientRect();
+			const scrollTop = codeContainer.scrollTop + lineRect.top - containerRect.top - containerRect.height / 3;
+			
+			// Smooth scroll to the line
+			codeContainer.scrollTo({
+				top: Math.max(0, scrollTop),
+				behavior: 'smooth'
+			});
+			
+			// Add a subtle flash effect to the line (only in annotation mode)
+			if (showAnnotations) {
+				targetLine.style.transition = 'background-color 0.3s ease';
+				const originalBg = targetLine.style.backgroundColor;
+				targetLine.style.backgroundColor = 'rgba(59, 130, 246, 0.3)';
+				
+				setTimeout(() => {
+					targetLine.style.backgroundColor = originalBg;
+					setTimeout(() => {
+						targetLine.style.transition = '';
+					}, 300);
+				}, 800);
+			}
+		}
+	}
+	
+	function isLineAnnotated(lineNumber) {
+		if (!annotations?.annotations) return false;
+		
+		return annotations.annotations.some(annotation => {
+			const lines = annotation.lines || annotation.line;
+			if (typeof lines === 'number') {
+				return lineNumber === lines;
+			}
+			if (typeof lines === 'string') {
+				if (lines.includes('-')) {
+					const [start, end] = lines.split('-').map(n => parseInt(n));
+					return lineNumber >= start && lineNumber <= end;
+				} else {
+					return lineNumber === parseInt(lines);
+				}
+			}
+			return false;
+		});
+	}
+	
+	// Reactive variable to track which lines should be highlighted in walkthrough
+	$: currentWalkthroughFocusLines = (() => {
+		if (!walkthroughActive || !annotations?.walkthrough?.steps?.[currentWalkthroughStep]) {
+			return [];
+		}
+		
+		const focusId = annotations.walkthrough.steps[currentWalkthroughStep].focus;
+		const focusAnnotation = annotations.annotations.find(a => a.id === focusId);
+		
+		if (!focusAnnotation) return [];
+		
+		const lines = focusAnnotation.lines || focusAnnotation.line;
+		const focusLines = [];
+		
+		if (typeof lines === 'number') {
+			focusLines.push(lines);
+		} else if (typeof lines === 'string') {
+			if (lines.includes('-')) {
+				const [start, end] = lines.split('-').map(n => parseInt(n));
+				for (let i = start; i <= end; i++) {
+					focusLines.push(i);
+				}
+			} else {
+				focusLines.push(parseInt(lines));
+			}
+		}
+		
+		return focusLines;
+	})();
+	
+	function isLineInWalkthroughFocus(lineNumber) {
+		return currentWalkthroughFocusLines.includes(lineNumber);
+	}
 </script>
 
 <svelte:head>
@@ -183,6 +394,24 @@
 				</button>
 			{/if}
 			
+			{#if annotations && !isMobile}
+				<button 
+					on:click={toggleAnnotations}
+					class="bg-vsc-light-bg-light dark:bg-vsc-bg-light text-vsc-light-text-primary dark:text-vsc-text-primary px-3 lg:px-4 py-2 rounded hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-dark transition-colors border border-vsc-light-border dark:border-vsc-border-light text-sm lg:text-base"
+				>
+					{showAnnotations ? '🔍 Hide' : '💡 Show'} Annotations
+				</button>
+				
+				{#if annotations.walkthrough && !walkthroughActive}
+					<button 
+						on:click={startWalkthrough}
+						class="bg-green-600 hover:bg-green-700 text-white px-3 lg:px-4 py-2 rounded transition-colors text-sm lg:text-base"
+					>
+						🎓 Start Walkthrough
+					</button>
+				{/if}
+			{/if}
+			
 			{#if readmeContent && isMobile}
 				<button 
 					on:click={showMobileCode}
@@ -203,6 +432,20 @@
 	{#if !isMobile}
 		<!-- Desktop Split View Layout -->
 		<div bind:this={splitContainer} class="split-view flex flex-col lg:flex-row h-[calc(100vh-16rem)] {isResizing ? 'select-none' : ''}">
+			
+			<!-- Walkthrough Panel (Left Side) -->
+			{#if showAnnotations && annotations?.walkthrough}
+				<div class="walkthrough-container bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden mr-2" style="width: 300px; flex-shrink: 0;">
+					<WalkthroughMode 
+						walkthrough={annotations.walkthrough}
+						currentStep={currentWalkthroughStep}
+						isActive={walkthroughActive}
+						on:start={startWalkthrough}
+						on:exit={exitWalkthrough}
+						on:stepChange={handleWalkthroughStep}
+					/>
+				</div>
+			{/if}
 			<!-- Code Panel -->
 			<div 
 				class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col transition-all duration-300"
@@ -211,11 +454,42 @@
 				<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
 					<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">🐍 {notepad.filePath}</span>
 				</div>
-				<div class="flex-1 overflow-auto">
-					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
-						bind:this={codeElement}
-						class="language-python block p-4 text-sm leading-relaxed"
-					>{content}</code></pre>
+				<div class="flex-1 overflow-auto" bind:this={codeContainer}>
+					{#if showAnnotations && annotations}
+						<!-- Enhanced code view with line numbers and annotations -->
+						<div class="code-with-annotations">
+							{#each content.split('\n') as line, i (`${i}-${currentWalkthroughStep}`)}
+								<div 
+									class="code-line flex hover:bg-vsc-light-bg-light dark:hover:bg-vsc-bg-light transition-colors
+										   {isLineAnnotated(i + 1) ? 'annotated' : ''}
+										   {isLineInWalkthroughFocus(i + 1) ? 'walkthrough-focus' : ''}"
+									on:mouseenter={() => onLineHover(i + 1)}
+									on:mouseleave={onLineLeave}
+									role="presentation"
+								>
+									<span class="line-number select-none text-vsc-light-text-secondary dark:text-vsc-text-secondary text-xs px-3 py-1 text-right border-r border-vsc-light-border dark:border-vsc-border-light bg-vsc-light-bg-light dark:bg-vsc-bg-light" style="min-width: 4rem;">
+										{i + 1}
+									</span>
+									<div class="flex-1 flex items-center">
+										<code class="language-python block px-4 py-1 text-sm leading-relaxed flex-1" style="background: transparent;">
+											{line || ' '}
+										</code>
+										{#if isLineAnnotated(i + 1)}
+											<span class="annotation-indicator text-lg mr-2 opacity-70" title="Line has annotations">
+												💡
+											</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<!-- Standard code view -->
+						<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
+							bind:this={codeElement}
+							class="language-python block p-4 text-sm leading-relaxed"
+						>{content}</code></pre>
+					{/if}
 				</div>
 			</div>
 
@@ -278,6 +552,32 @@
 						{/if}
 					</div>
 				{/if}
+			</div>
+		{/if}
+		
+		<!-- Annotation Panel (Right Side) -->
+		{#if showAnnotations && annotations && !walkthroughActive}
+			<!-- Resizer Bar for Annotations -->
+			<div 
+				class="w-1 bg-vsc-light-border dark:bg-vsc-border-light hover:bg-vsc-light-accent-blue dark:hover:bg-vsc-accent-blue cursor-col-resize transition-colors flex-shrink-0"
+				role="separator"
+				title="Drag to resize annotation panel"
+			></div>
+			
+			<div 
+				class="annotation-panel-container bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden flex flex-col"
+				style="width: {annotationPanelWidth}%; min-width: 250px;"
+			>
+				<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
+					<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">💡 Code Annotations</span>
+				</div>
+				<AnnotationPanel 
+					annotations={annotations.annotations}
+					activeLineRange={hoveredLine}
+					walkthroughMode={walkthroughActive}
+					currentWalkthroughStep={currentWalkthroughStep}
+					walkthrough={annotations.walkthrough}
+				/>
 			</div>
 		{/if}
 		</div>
@@ -631,5 +931,99 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+	
+	/* Annotation Styles */
+	.code-with-annotations {
+		font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+		background: theme('colors.vsc-light-bg-medium');
+		color: theme('colors.vsc-light-text-primary');
+	}
+	
+	:global(.dark) .code-with-annotations {
+		background: theme('colors.vsc-bg-medium');
+		color: theme('colors.vsc-text-primary');
+	}
+	
+	.code-line.annotated {
+		background: rgba(253, 224, 71, 0.1) !important;
+		border-left: 3px solid #fbbf24;
+	}
+	
+	:global(.dark) .code-line.annotated {
+		background: rgba(253, 224, 71, 0.05) !important;
+		border-left-color: #fbbf24;
+	}
+	
+	.code-line.walkthrough-focus {
+		background: rgba(59, 130, 246, 0.2) !important;
+		border-left: 4px solid #3b82f6;
+		animation: focusPulse 2s ease-in-out infinite;
+		box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+	}
+	
+	:global(.dark) .code-line.walkthrough-focus {
+		background: rgba(59, 130, 246, 0.15) !important;
+		box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+	}
+	
+	@keyframes focusPulse {
+		0%, 100% {
+			border-left-color: #3b82f6;
+			box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+		}
+		50% {
+			border-left-color: #60a5fa;
+			box-shadow: 0 0 15px rgba(96, 165, 250, 0.4);
+		}
+	}
+	
+	:global(.dark) .code-line.walkthrough-focus {
+		@keyframes darkFocusPulse {
+			0%, 100% {
+				box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+			}
+			50% {
+				box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
+			}
+		}
+		animation: darkFocusPulse 2s ease-in-out infinite;
+	}
+	
+	.annotation-indicator {
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+	
+	.code-line:hover .annotation-indicator,
+	.code-line.annotated .annotation-indicator,
+	.code-line.walkthrough-focus .annotation-indicator {
+		opacity: 0.8;
+	}
+	
+	.line-number {
+		user-select: none;
+		font-variant-numeric: tabular-nums;
+	}
+	
+	.code-line:hover .line-number {
+		background: theme('colors.vsc-light-bg-medium') !important;
+		color: theme('colors.vsc-light-text-primary') !important;
+	}
+	
+	:global(.dark) .code-line:hover .line-number {
+		background: theme('colors.vsc-bg-medium') !important;
+		color: theme('colors.vsc-text-primary') !important;
+	}
+	
+	/* Walkthrough container styling */
+	.walkthrough-container {
+		max-height: 100%;
+		min-width: 280px;
+	}
+	
+	/* Annotation panel styling */
+	.annotation-panel-container {
+		max-height: 100%;
 	}
 </style>

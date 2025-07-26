@@ -47,9 +47,23 @@ export async function load({ params }) {
 		readmeContent = await loadFileContent(processedReadmeFile);
 	}
 	
+	// Load annotations if they exist
+	let annotationsData = null;
+	if (notepad.annotationsFile) {
+		const annotationsContent = await loadFileContent(notepad.annotationsFile);
+		if (annotationsContent) {
+			try {
+				annotationsData = JSON.parse(annotationsContent);
+			} catch (err) {
+				console.error('Error parsing annotations:', notepad.annotationsFile, err);
+			}
+		}
+	}
+	
 	return {
 		notepad,
 		content,
-		readmeContent
+		readmeContent,
+		annotations: annotationsData
 	};
 }

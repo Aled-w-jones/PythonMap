@@ -1,16 +1,18 @@
 [
   {
     "type": "notepad",
-    "id": "file_automation",
-    "title": "File Operations Automation",
-    "description": "A simple script to automate file operations on your system. Demonstrates safe directory creation and file copying.",
+    "id": "arcgis_utils",
+    "title": "ArcGIS Utilities - Enterprise Connection Management",
+    "description": "A comprehensive, production-ready utility for managing ArcGIS connections with enterprise-grade logging, performance monitoring, secure credential management, and robust SSL certificate handling.",
     "tags": [
+      "GIS",
+      "enterprise",
+      "security",
       "automation",
-      "files",
-      "beginner"
+      "advanced"
     ],
-    "filePath": "scripts/script_a.py",
-    "url": "/notepads/file_automation"
+    "filePath": "scripts/arcgis_utils.py",
+    "url": "/notepads/arcgis_utils"
   },
   {
     "type": "notepad",
@@ -27,20 +29,6 @@
   },
   {
     "type": "notepad",
-    "id": "web_scraper_processor",
-    "title": "Web Scraper and Data Processor",
-    "description": "A comprehensive Python script for web scraping, data extraction, and analysis. Features smart HTTP handling, content extraction with BeautifulSoup, and multi-format data export capabilities.",
-    "tags": [
-      "web scraping",
-      "data processing",
-      "automation",
-      "intermediate"
-    ],
-    "filePath": "scripts/script_b.py",
-    "url": "/notepads/web_scraper_processor"
-  },
-  {
-    "type": "notepad",
     "id": "advanced_data_analytics",
     "title": "Advanced Data Analytics Suite",
     "description": "A powerful, all-in-one Python toolkit for comprehensive data analysis, visualization, and machine learning. Features automated EDA, intelligent data cleaning, beautiful visualizations, and AutoML capabilities.",
@@ -54,6 +42,34 @@
     ],
     "filePath": "scripts/project_y/data_analyzer.py",
     "url": "/notepads/advanced_data_analytics"
+  },
+  {
+    "type": "python",
+    "title": "arcgis_utils.py",
+    "description": "python file in scripts",
+    "filePath": "scripts\\arcgis_utils.py",
+    "url": "/browser/arcgis_utils.py"
+  },
+  {
+    "type": "markdown",
+    "title": "arcgis_utils_README.md",
+    "description": "markdown file in scripts",
+    "filePath": "scripts\\arcgis_utils_README.md",
+    "url": "/browser/arcgis_utils_README.md"
+  },
+  {
+    "type": "readme",
+    "title": "README - arcgis_utils_README",
+    "description": "Processed README file for arcgis_utils_README.md",
+    "filePath": "scripts\\arcgis_utils_README.md",
+    "url": "/browser/arcgis_utils_README.md"
+  },
+  {
+    "type": "file",
+    "title": "gis_config.json",
+    "description": "file file in scripts",
+    "filePath": "scripts\\gis_config.json",
+    "url": "/browser/gis_config.json"
   },
   {
     "type": "readme",
@@ -96,34 +112,6 @@
     "description": "markdown file in project_y",
     "filePath": "scripts\\project_y\\README.md",
     "url": "/browser/project_y/README.md"
-  },
-  {
-    "type": "python",
-    "title": "script_a.py",
-    "description": "python file in scripts",
-    "filePath": "scripts\\script_a.py",
-    "url": "/browser/script_a.py"
-  },
-  {
-    "type": "markdown",
-    "title": "script_a_README.md",
-    "description": "markdown file in scripts",
-    "filePath": "scripts\\script_a_README.md",
-    "url": "/browser/script_a_README.md"
-  },
-  {
-    "type": "readme",
-    "title": "README - script_a_README",
-    "description": "Processed README file for script_a_README.md",
-    "filePath": "scripts\\script_a_README.md",
-    "url": "/browser/script_a_README.md"
-  },
-  {
-    "type": "python",
-    "title": "script_b.py",
-    "description": "python file in scripts",
-    "filePath": "scripts\\script_b.py",
-    "url": "/browser/script_b.py"
   },
   {
     "type": "markdown",

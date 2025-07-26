@@ -60,6 +60,11 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
         const items = await readdir(dirPath);
         
         for (const item of items) {
+            // Skip hidden directories and annotation directories
+            if (item.startsWith('.') || item === '.annotations') {
+                continue;
+            }
+            
             const fullPath = join(dirPath, item);
             const relativePath = basePath ? `${basePath}/${item}` : item;
             

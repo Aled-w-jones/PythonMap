@@ -1,15 +1,15 @@
 [
   {
-    "id": "file_automation",
-    "title": "File Operations Automation",
-    "description": "A simple script to automate file operations on your system. Demonstrates safe directory creation and file copying.",
-    "filePath": "scripts/script_a.py",
-    "readmeFile": "scripts/script_a_README.md",
-    "tags": ["automation", "files", "beginner"],
+    "id": "arcgis_utils",
+    "title": "ArcGIS Utilities - Enterprise Connection Management",
+    "description": "A comprehensive, production-ready utility for managing ArcGIS connections with enterprise-grade logging, performance monitoring, secure credential management, and robust SSL certificate handling.",
+    "filePath": "scripts/arcgis_utils.py",
+    "readmeFile": "scripts/arcgis_utils_README.md",
+    "tags": ["GIS", "enterprise", "security", "automation", "advanced"],
     "author": "PythonMap",
-    "lastUpdated": "2025-07-23T22:00:00Z",
-    "dependencies": ["os", "shutil", "pathlib"],
-    "annotationsFile": null
+    "lastUpdated": "2025-07-25T12:00:00Z",
+    "dependencies": ["arcgis", "requests", "certifi", "keyring"],
+    "annotationsFile": ".annotations/arcgis_utils_annotations.json"
   },
   {
     "id": "data_analysis_utils",
