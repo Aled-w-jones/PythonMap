@@ -47,15 +47,17 @@ export async function load({ params }) {
 		readmeContent = await loadFileContent(processedReadmeFile);
 	}
 	
-	// Load annotations if they exist
+	// Load annotations if they exist (from processed static files)
 	let annotationsData = null;
 	if (notepad.annotationsFile) {
-		const annotationsContent = await loadFileContent(notepad.annotationsFile);
+		// Convert path to the processed annotations filename
+		const processedAnnotationsFile = `static/data/annotations/${notepad.annotationsFile.replace(/[\/\\]/g, '_')}`;
+		const annotationsContent = await loadFileContent(processedAnnotationsFile);
 		if (annotationsContent) {
 			try {
 				annotationsData = JSON.parse(annotationsContent);
 			} catch (err) {
-				console.error('Error parsing annotations:', notepad.annotationsFile, err);
+				console.error('Error parsing annotations:', processedAnnotationsFile, err);
 			}
 		}
 	}

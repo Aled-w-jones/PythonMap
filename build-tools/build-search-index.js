@@ -141,6 +141,7 @@ async function createStaticContentFiles(notepads) {
         // Ensure directories exist
         await mkdir('static/data/scripts', { recursive: true });
         await mkdir('static/data/readmes', { recursive: true });
+        await mkdir('static/data/annotations', { recursive: true });
         
         for (const notepad of notepads) {
             try {
@@ -158,6 +159,17 @@ async function createStaticContentFiles(notepads) {
                         await writeFile(`static/data/readmes/${readmeFileName}`, readmeHtml);
                     } catch (readmeError) {
                         console.warn(`Warning: Could not process README file ${notepad.readmeFile}`);
+                    }
+                }
+                
+                // Create static file for annotations if exists
+                if (notepad.annotationsFile) {
+                    try {
+                        const annotationsText = await readFile(notepad.annotationsFile, 'utf-8');
+                        const annotationsFileName = notepad.annotationsFile.replace(/[\/\\]/g, '_');
+                        await writeFile(`static/data/annotations/${annotationsFileName}`, annotationsText);
+                    } catch (annotationsError) {
+                        console.warn(`Warning: Could not process annotations file ${notepad.annotationsFile}`);
                     }
                 }
             } catch (error) {

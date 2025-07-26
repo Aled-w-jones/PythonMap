@@ -24,18 +24,6 @@
     "annotationsFile": null
   },
   {
-    "id": "web_scraper_processor",
-    "title": "Web Scraper and Data Processor",
-    "description": "A comprehensive Python script for web scraping, data extraction, and analysis. Features smart HTTP handling, content extraction with BeautifulSoup, and multi-format data export capabilities.",
-    "filePath": "scripts/script_b.py",
-    "readmeFile": "scripts/script_b_README.md",
-    "tags": ["web scraping", "data processing", "automation", "intermediate"],
-    "author": "PythonMap",
-    "lastUpdated": "2025-01-24T20:00:00Z",
-    "dependencies": ["requests", "beautifulsoup4", "pandas", "datetime"],
-    "annotationsFile": null
-  },
-  {
     "id": "advanced_data_analytics",
     "title": "Advanced Data Analytics Suite",
     "description": "A powerful, all-in-one Python toolkit for comprehensive data analysis, visualization, and machine learning. Features automated EDA, intelligent data cleaning, beautiful visualizations, and AutoML capabilities.",

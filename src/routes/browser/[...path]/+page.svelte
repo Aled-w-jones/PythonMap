@@ -125,7 +125,7 @@
 						
 						// If this IS a README file, find its processed HTML version for the right panel
 						if (fileName.toLowerCase().includes('readme') && getExtensionFromPath(item.filePath) === 'md') {
-							const processedVersion = $searchIndex.find(htmlItem => 
+							const processedVersion = data.searchIndex.find(htmlItem => 
 								htmlItem.type === 'readme' && 
 								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
 							);

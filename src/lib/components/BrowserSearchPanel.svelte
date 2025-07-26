@@ -1,29 +1,20 @@
 <script>
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
-	import { searchIndex, availableTags, loadSearchIndex } from '$lib/stores/search.js';
 	
 	let searchQuery = '';
 	let searchResults = [];
-	let currentSearchIndex = [];
-	let currentAvailableTags = [];
 	let isSearching = false;
 	let selectedTag = '';
 	export let isPanelOpen = false;
+	export let searchIndex = [];
 	
-	// Subscribe to search store
-	$: currentSearchIndex = $searchIndex;
-	$: currentAvailableTags = $availableTags;
-	
-	onMount(async () => {
-		try {
-			await loadSearchIndex();
-		} catch (error) {
-			console.error('Error loading search index:', error);
-		}
-	});
+	// Compute available tags from embedded search index
+	$: availableTags = searchIndex
+		.filter(item => item.tags && Array.isArray(item.tags))
+		.flatMap(item => item.tags)
+		.filter((tag, index, arr) => arr.indexOf(tag) === index)
+		.sort();
 	
 	function performSearch() {
 		if (!searchQuery.trim() && !selectedTag) {
@@ -34,7 +25,7 @@
 		isSearching = true;
 		const query = searchQuery.toLowerCase().trim();
 		
-		searchResults = currentSearchIndex.filter(item => {
+		searchResults = searchIndex.filter(item => {
 			// Tag filter
 			if (selectedTag && (!item.tags || !item.tags.includes(selectedTag))) {
 				return false;
@@ -160,7 +151,7 @@
 					class="w-full bg-vsc-light-bg-light dark:bg-vsc-bg-dark border border-vsc-light-border dark:border-vsc-border-light rounded px-2 py-1 text-xs text-vsc-light-text-primary dark:text-vsc-text-primary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue"
 				>
 					<option value="">All Tags</option>
-					{#each currentAvailableTags as tag}
+					{#each availableTags as tag}
 						<option value={tag}>{tag}</option>
 					{/each}
 				</select>
