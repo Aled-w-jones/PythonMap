@@ -1,23 +1,20 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
 	import hljs from 'highlight.js/lib/core';
 	import python from 'highlight.js/lib/languages/python';
 	import javascript from 'highlight.js/lib/languages/javascript';
 	import json from 'highlight.js/lib/languages/json';
 	import markdown from 'highlight.js/lib/languages/markdown';
 	import BrowserSearchPanel from '$lib/components/BrowserSearchPanel.svelte';
-	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-	import { searchIndex, loadSearchIndex } from '$lib/stores/search.js';
-	import { getCachedFileContent } from '$lib/stores/fileCache.js';
+	import type { PageData } from './$types';
 	
-	// Client-side data loading
-	let data = null;
-	let loading = true;
-	let error = null;
+	// Server-side data from +page.server.ts
+	export let data: PageData;
 	
+	// Extract data from server
+	$: ({ searchIndex, data: pageData } = data);
+
 	let codeElement;
 	let directoryMinimized = false;
 	let splitContainer;
@@ -31,23 +28,23 @@
 	let mobileModalContent = 'code'; // 'code' or 'documentation'
 	
 	// Check if this file has README.md for split view (but exclude README files themselves)
-	$: isFileWithReadme = data?.type === 'file' && 
-		data?.readmeContent && 
-		!(data?.name?.toLowerCase().includes('readme') && data?.extension === 'md');
+	$: isFileWithReadme = pageData?.type === 'file' && 
+		pageData?.readmeContent && 
+		!(pageData?.name?.toLowerCase().includes('readme') && pageData?.extension === 'md');
 	
 	// Debug logging
-	$: if (data) {
+	$: if (pageData) {
 		console.log('File data:', {
-			type: data.type,
-			name: data.name,
-			hasReadmeContent: !!data.readmeContent,
+			type: pageData.type,
+			name: pageData.name,
+			hasReadmeContent: !!pageData.readmeContent,
 			isFileWithReadme,
-			readmeContentLength: data.readmeContent?.length
+			readmeContentLength: pageData.readmeContent?.length
 		});
 	}
 		
 	// Check if this is a README.md file specifically (for different rendering)
-	$: isReadmeFile = data?.type === 'file' && data?.name?.toLowerCase() === 'readme.md';
+	$: isReadmeFile = pageData?.type === 'file' && pageData?.name?.toLowerCase() === 'readme.md';
 	
 	// Register languages
 	hljs.registerLanguage('python', python);
@@ -55,16 +52,8 @@
 	hljs.registerLanguage('json', json);
 	hljs.registerLanguage('markdown', markdown);
 	
-	// Load search index using centralized store
-	onMount(async () => {
-		try {
-			await loadSearchIndex();
-		} catch (err) {
-			console.error('Error loading search index:', err);
-			error = 'Failed to load search index';
-			loading = false;
-		}
-		
+	// Initialize component
+	onMount(() => {
 		// Set panel closed by default
 		isPanelOpen = false;
 		
@@ -78,344 +67,12 @@
 		});
 	});
 	
-	// React to path changes
-	$: if ($searchIndex.length > 0 && $page.params.path !== undefined) {
-		loadPageData($page.params.path || '');
-	}
+	// Data is loaded server-side, no need for client-side loading function
 	
-	async function loadPageData(requestedPath) {
-		loading = true;
-		error = null;
-		data = null;
-		
-		try {
-			console.log('Loading data for path:', requestedPath);
-			
-			if (!requestedPath || requestedPath === '' || requestedPath === 'scripts') {
-				// Show scripts directory listing
-				data = await buildDirectoryListing($searchIndex, 'scripts');
-			} else {
-				// Try to find specific file or directory
-				const item = findItemInSearchIndex($searchIndex, requestedPath);
-				console.log('Found item:', item);
-				
-				if (item) {
-					if (item.type === 'python' || item.type === 'markdown' || item.type === 'javascript' || item.type === 'json' || item.type === 'readme') {
-						// File view - get actual filename from path
-						const fileName = item.filePath.split('/').pop() || item.filePath.split('\\').pop() || item.filePath;
-						
-						// Load content from static files
-						let displayContent = '';
-						let isMarkdownRendered = false;
-						
-						try {
-							if (item.type === 'readme') {
-								displayContent = await getCachedFileContent(item.filePath, 'readme');
-								isMarkdownRendered = true;
-							} else {
-								displayContent = await getCachedFileContent(item.filePath, 'script');
-							}
-						} catch (error) {
-							console.error('Error loading file content:', error);
-							displayContent = 'Error loading file content';
-						}
-						
-						// Special handling for README files viewed directly
-						let readmeContent = await findReadmeForFile($searchIndex, item);
-						
-						// If this IS a README file, find its processed HTML version for the right panel
-						if (fileName.toLowerCase().includes('readme') && getExtensionFromPath(item.filePath) === 'md') {
-							const processedVersion = data.searchIndex.find(htmlItem => 
-								htmlItem.type === 'readme' && 
-								htmlItem.filePath.replace(/\\/g, '/') === item.filePath.replace(/\\/g, '/')
-							);
-							if (processedVersion) {
-								try {
-									readmeContent = await getCachedFileContent(processedVersion.filePath, 'readme');
-								} catch (error) {
-									console.error('Error loading processed README content:', error);
-								}
-							}
-						}
-						
-						data = {
-							type: 'file',
-							path: requestedPath,
-							content: displayContent,
-							extension: getExtensionFromPath(item.filePath),
-							name: fileName,
-							breadcrumbs: requestedPath.split('/').filter(Boolean),
-							readmeContent: readmeContent,
-							isMarkdownRendered: isMarkdownRendered
-						};
-					} else {
-						// Directory view
-						data = await buildDirectoryListing($searchIndex, requestedPath);
-					}
-				} else {
-					// Try as directory
-					data = await buildDirectoryListing($searchIndex, requestedPath);
-					if (!data.items || data.items.length === 0) {
-						throw new Error('Path not found');
-					}
-				}
-			}
-		} catch (err) {
-			console.error('Error loading browser data:', err);
-			error = 'Failed to load browser data';
-		} finally {
-			loading = false;
-		}
-		
-		// Highlight code if it's a file
-		setTimeout(() => {
-			if (codeElement && data?.type === 'file') {
-				hljs.highlightElement(codeElement);
-			}
-		}, 100);
-	}
+	// All data processing is now done server-side
 	
-	// Helper functions
-	function findItemInSearchIndex(searchIndex, path) {
-		// Skip notepad entries for browser - only find actual files
-		// For direct file viewing, prefer raw markdown over processed readme
-		const items = searchIndex.filter(item => {
-			if (item.type === 'notepad') return false;
-			
-			if (item.filePath) {
-				// Normalize both paths for comparison
-				const normalizedItemPath = item.filePath.replace(/\\/g, '/').replace(/^scripts\//, '');
-				const normalizedSearchPath = path.replace(/\\/g, '/');
-				
-				console.log('Comparing paths:', normalizedItemPath, 'vs', normalizedSearchPath);
-				return normalizedItemPath === normalizedSearchPath;
-			}
-			return false;
-		});
-		
-		// If we have multiple matches (raw markdown + processed readme), prefer raw markdown for direct viewing
-		const markdownItem = items.find(item => item.type === 'markdown');
-		if (markdownItem) return markdownItem;
-		
-		// Otherwise return the first match
-		return items[0];
-	}
-	
-	function getExtensionFromPath(filePath) {
-		return filePath.includes('.') ? filePath.split('.').pop() : undefined;
-	}
-	
-	async function findReadmeForFile(searchIndex, fileItem) {
-		// Get the file name without extension for matching
-		const fileName = fileItem.filePath.split('/').pop().split('\\').pop();
-		const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-		const fileDir = fileItem.filePath.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
-		
-		console.log('Looking for README for file:', fileName, 'in directory:', fileDir);
-		console.log('File name without ext:', fileNameWithoutExt);
-		console.log('Looking for patterns:', [
-			'readme.md', 
-			`${fileNameWithoutExt.toLowerCase()}_readme.md`,
-			`readme_${fileNameWithoutExt.toLowerCase()}.md`
-		]);
-		
-		// Look for the processed HTML version (type: 'readme') first
-		let readmeItem = searchIndex.find(item => {
-			if (item.type === 'readme') {
-				const itemPath = item.filePath.replace(/\\/g, '/');
-				const itemDir = itemPath.split('/').slice(0, -1).join('/');
-				const itemFileName = itemPath.split('/').pop();
-				
-				// Check if it's in the same directory
-				if (itemDir === fileDir) {
-					console.log('Checking README item:', itemFileName, 'in dir:', itemDir);
-					// Check for different README patterns:
-					// 1. README.md (general directory README)
-					// 2. script_a_README.md (file-specific README)
-					// 3. README_script_a.md (alternative pattern)
-					const matches = itemFileName.toLowerCase() === 'readme.md' || 
-					       itemFileName.toLowerCase() === `${fileNameWithoutExt.toLowerCase()}_readme.md` ||
-					       itemFileName.toLowerCase() === `readme_${fileNameWithoutExt.toLowerCase()}.md`;
-					console.log('Pattern match result:', matches, 'for file:', itemFileName.toLowerCase());
-					return matches;
-				}
-			}
-			return false;
-		});
-		
-		// If no processed version found, look for raw markdown
-		if (!readmeItem) {
-			readmeItem = searchIndex.find(item => {
-				if (item.type === 'markdown') {
-					const itemPath = item.filePath.replace(/\\/g, '/');
-					const itemDir = itemPath.split('/').slice(0, -1).join('/');
-					const itemFileName = itemPath.split('/').pop();
-					
-					if (itemDir === fileDir && itemFileName.toLowerCase().includes('readme')) {
-						return itemFileName.toLowerCase() === 'readme.md' || 
-						       itemFileName.toLowerCase() === `${fileNameWithoutExt.toLowerCase()}_readme.md` ||
-						       itemFileName.toLowerCase() === `readme_${fileNameWithoutExt.toLowerCase()}.md`;
-					}
-				}
-				return false;
-			});
-		}
-		
-		console.log('Found README item:', readmeItem ? readmeItem.filePath : 'none');
-		
-		if (readmeItem) {
-			try {
-				return await getCachedFileContent(readmeItem.filePath, 'readme');
-			} catch (error) {
-				console.error('Error loading README content:', error);
-			}
-		}
-		return null;
-	}
-	
-	async function buildDirectoryListing(searchIndex, dirPath) {
-		const items = [];
-		const seenItems = new Set();
-		
-		console.log('Building directory listing for:', dirPath);
-		
-		// Find all items in this directory - exclude notepad entries, only show actual files
-		for (const item of searchIndex) {
-			// Skip notepad entries - we only want actual files for the browser
-			if (item.type === 'notepad') continue;
-			
-			if (item.filePath) {
-				const normalizedPath = item.filePath.replace(/\\/g, '/');
-				const relativePath = normalizedPath.replace('scripts/', '');
-				const pathParts = relativePath.split('/');
-				
-				console.log('Processing item:', item.filePath, 'relativePath:', relativePath, 'pathParts:', pathParts);
-				
-				if (dirPath === 'scripts' || dirPath === '') {
-					// Root scripts directory
-					if (pathParts.length === 1) {
-						// Direct file in scripts - use actual filename, not title
-						const fileName = pathParts[0];
-						if (!seenItems.has(fileName)) {
-							items.push({
-								name: fileName,
-								type: 'file',
-								path: fileName,
-								extension: getExtensionFromPath(item.filePath)
-							});
-							seenItems.add(fileName);
-						}
-					} else if (pathParts.length > 1) {
-						// File in subdirectory - add the subdirectory
-						const subDir = pathParts[0];
-						if (!seenItems.has(subDir)) {
-							items.push({
-								name: subDir,
-								type: 'directory',
-								path: subDir
-							});
-							seenItems.add(subDir);
-						}
-					}
-				} else {
-					// Specific subdirectory - check if the file is in this directory
-					const targetDir = dirPath;
-					
-					// Check if this file belongs to the target directory
-					if (relativePath.startsWith(targetDir + '/') || relativePath === targetDir) {
-						const remainingPath = relativePath.replace(targetDir + '/', '');
-						const remainingParts = remainingPath.split('/');
-						
-						if (remainingParts.length === 1 && remainingParts[0] !== '') {
-							// Direct file in this directory - use actual filename
-							const fileName = remainingParts[0];
-							if (!seenItems.has(fileName)) {
-								items.push({
-									name: fileName,
-									type: 'file',
-									path: relativePath,
-									extension: getExtensionFromPath(item.filePath)
-								});
-								seenItems.add(fileName);
-							}
-						} else if (remainingParts.length > 1) {
-							// File in subdirectory
-							const subDir = remainingParts[0];
-							if (!seenItems.has(subDir)) {
-								items.push({
-									name: subDir,
-									type: 'directory',
-									path: targetDir + '/' + subDir
-								});
-								seenItems.add(subDir);
-							}
-						}
-					}
-				}
-			}
-		}
-		
-		console.log('Found items for', dirPath, ':', items);
-		
-		// Sort items: directories first, then files
-		items.sort((a, b) => {
-			if (a.type !== b.type) {
-				return a.type === 'directory' ? -1 : 1;
-			}
-			return a.name.localeCompare(b.name);
-		});
-		
-		// Find README for this directory - only if there's a README directly in this directory
-		let readmeContent = null;
-		
-		// Only show README content for specific directories that actually have a README
-		// The root scripts directory should not show any README content
-		if (dirPath !== 'scripts' && dirPath !== '') {
-			// Look for the processed HTML version (type: 'readme') first
-			let readmeItem = searchIndex.find(item => {
-				if (item.type === 'readme') {
-					const normalizedPath = item.filePath.replace(/\\/g, '/');
-					const readmeDir = normalizedPath.replace('scripts/', '').replace('/README.md', '');
-					
-					// Only show README if it's directly in the requested directory
-					return readmeDir === dirPath;
-				}
-				return false;
-			});
-			
-			// If no processed version found, look for raw markdown
-			if (!readmeItem) {
-				readmeItem = searchIndex.find(item => {
-					if (item.type === 'markdown' && item.filePath.toLowerCase().includes('readme')) {
-						const normalizedPath = item.filePath.replace(/\\/g, '/');
-						const readmeDir = normalizedPath.replace('scripts/', '').replace('/README.md', '');
-						
-						return readmeDir === dirPath;
-					}
-					return false;
-				});
-			}
-			
-			if (readmeItem) {
-				try {
-					readmeContent = await getCachedFileContent(readmeItem.filePath, 'readme');
-				} catch (error) {
-					console.error('Error loading directory README content:', error);
-				}
-			}
-		}
-		
-		return {
-			type: 'directory',
-			path: dirPath,
-			items,
-			readmeContent,
-			breadcrumbs: dirPath === 'scripts' ? [] : dirPath.split('/').filter(Boolean)
-		};
-	}
-	
-	// Also highlight when data changes (for client-side navigation)
-	$: if (codeElement && data?.type === 'file') {
+	// Highlight code when pageData changes
+	$: if (codeElement && pageData?.type === 'file') {
 		setTimeout(() => {
 			hljs.highlightElement(codeElement);
 		}, 0);
@@ -453,8 +110,8 @@
 	}
 
 	function copyToClipboard() {
-		if (data.type === 'file') {
-			navigator.clipboard.writeText(data.content).then(() => {
+		if (pageData?.type === 'file') {
+			navigator.clipboard.writeText(pageData.content).then(() => {
 				alert('Content copied to clipboard!');
 			});
 		}
@@ -494,7 +151,7 @@
 		showMobileModal = true;
 		// Highlight code after modal opens
 		setTimeout(() => {
-			if (codeElement && data?.type === 'file') {
+			if (codeElement && pageData?.type === 'file') {
 				hljs.highlightElement(codeElement);
 			}
 		}, 100);
@@ -511,27 +168,18 @@
 </script>
 
 <svelte:head>
-	<title>Browser: {data?.path || 'Loading...'} - PythonMap</title>
+	<title>Browser: {pageData?.path || 'Loading...'} - PythonMap</title>
 </svelte:head>
 
 <!-- Search Panel -->
 <div class="{isMobile ? (isPanelOpen ? 'fixed inset-0 z-40' : 'hidden') : (isPanelOpen ? 'w-80' : 'hidden')} {isMobile ? '' : 'flex-shrink-0'} transition-all duration-300">
-	<BrowserSearchPanel bind:isPanelOpen />
+	<BrowserSearchPanel bind:isPanelOpen searchIndex={searchIndex} />
 </div>
 
 <!-- Main Content -->
 <div class="flex-1 overflow-auto {isMobile && isPanelOpen ? 'hidden' : ''}">
 	<div class="container mx-auto px-4 py-4 lg:py-8">
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<LoadingSpinner message="Loading content... this could take up to 20 seconds... free hosting in use" />
-			</div>
-		{:else if error}
-			<div class="text-center py-12">
-				<p class="text-red-500 text-lg">{error}</p>
-				<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline mt-4 inline-block">&larr; Back to Browser</a>
-			</div>
-		{:else if data}
+		{#if pageData}
 		<!-- Navigation -->
 		<div class="mb-8 flex items-center justify-between">
 			<a href="{base}/browser" class="text-vsc-light-accent-blue dark:text-vsc-accent-blue hover:underline">&larr; Back to Browser</a>
@@ -553,11 +201,11 @@
 				<a href="{base}/browser" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue flex-shrink-0">Home</a>
 				<span class="flex-shrink-0">/</span>
 				<a href="{base}/browser/scripts" class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue flex-shrink-0">Scripts</a>
-				{#if data.breadcrumbs.length > 0}
-					{#each data.breadcrumbs as crumb, index}
+				{#if pageData.breadcrumbs && pageData.breadcrumbs.length > 0}
+					{#each pageData.breadcrumbs as crumb, index}
 						<span class="flex-shrink-0">/</span>
 						<a 
-							href="{base}/browser/{data.breadcrumbs.slice(0, index + 1).join('/')}"
+							href="{base}/browser/{pageData.breadcrumbs.slice(0, index + 1).join('/')}"
 							class="hover:text-vsc-light-accent-blue dark:hover:text-vsc-accent-blue flex-shrink-0"
 						>
 							{crumb}
@@ -567,11 +215,11 @@
 			</div>
 		</nav>
 
-		{#if data.type === 'directory'}
+		{#if pageData.type === 'directory'}
 			<!-- Directory View -->
 			<header class="mb-6 lg:mb-8">
 				<h1 class="text-2xl lg:text-3xl font-bold mb-3 lg:mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary">
-					📁 {data.path === 'scripts' || data.path === '.' ? 'Scripts Directory' : data.path}
+					📁 {pageData.path === 'scripts' || pageData.path === '.' ? 'Scripts Directory' : pageData.path}
 				</h1>
 			</header>
 
@@ -581,13 +229,13 @@
 					<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">Files and Directories</span>
 				</div>
 				
-				{#if data.items.length === 0}
+				{#if pageData.items.length === 0}
 					<div class="p-8 text-center text-vsc-light-text-secondary dark:text-vsc-text-secondary">
 						This directory is empty.
 					</div>
 				{:else}
 					<div class="divide-y divide-vsc-light-border dark:divide-vsc-border-light">
-						{#each data.items as item, index}
+						{#each pageData.items as item, index}
 							<div class="folder-item px-4 py-3 hover:bg-vsc-light-bg-light dark:hover:bg-vsc-bg-light transition-all duration-300 cursor-pointer transform hover:scale-[1.02] hover:translate-x-2" 
 								style="animation-delay: {index * 100}ms">
 								<div class="flex items-center justify-between">
@@ -626,19 +274,19 @@
 			</div>
 
 			<!-- README Content -->
-			{#if data.readmeContent}
+			{#if pageData.readmeContent}
 				<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg p-6 mt-8">
 					<div class="prose prose-invert max-w-none">
-						{@html data.readmeContent}
+						{@html pageData.readmeContent}
 					</div>
 				</div>
 			{/if}
 
-		{:else if data.type === 'file'}
+		{:else if pageData.type === 'file'}
 			<!-- File View -->
 			<header class="mb-6 lg:mb-8">
 				<h1 class="text-xl lg:text-3xl font-bold mb-3 lg:mb-4 text-vsc-light-text-primary dark:text-vsc-text-primary break-all">
-					{getFileIcon({ extension: data.extension })} {data.name}
+					{getFileIcon({ extension: pageData.extension })} {pageData.name}
 				</h1>
 				
 				<div class="flex flex-wrap gap-2 lg:gap-3">
@@ -684,18 +332,19 @@
 						style="width: {directoryMinimized ? '100%' : `${leftPanelWidth}%`}"
 					>
 						<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light flex-shrink-0">
-							<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{getFileIcon({ extension: data.extension })} {data.path}</span>
+							<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{getFileIcon({ extension: pageData.extension })} {pageData.path}</span>
 						</div>
 						<div class="flex-1 overflow-auto">
 							<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
 								bind:this={codeElement}
-								class="{getLanguageClass(data.extension)} block p-4 text-sm leading-relaxed"
-							>{data.content}</code></pre>
+								class="{getLanguageClass(pageData.extension)} block p-4 text-sm leading-relaxed"
+							>{pageData.content}</code></pre>
 						</div>
 					</div>
 
 					<!-- Resizer Bar -->
 					{#if !directoryMinimized}
+						<!-- svelte-ignore a11y-no-static-element-interactions -->
 						<div 
 							class="w-1 bg-vsc-light-border dark:bg-vsc-border-light hover:bg-vsc-light-accent-blue dark:hover:bg-vsc-accent-blue cursor-col-resize transition-colors flex-shrink-0"
 							on:mousedown={startResize}
@@ -734,7 +383,7 @@
 							<div class="flex-1 overflow-auto">
 								<div class="p-4">
 									<div class="prose prose-invert max-w-none">
-										{@html data.readmeContent}
+										{@html pageData.readmeContent}
 									</div>
 								</div>
 							</div>
@@ -745,7 +394,7 @@
 				<!-- Mobile View for Files with README -->
 				<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden">
 					<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light">
-						<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{getFileIcon({ extension: data.extension })} {data.path}</span>
+						<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{getFileIcon({ extension: pageData.extension })} {pageData.path}</span>
 					</div>
 					<div class="p-4 text-center">
 						<p class="text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-4">
@@ -771,22 +420,22 @@
 				<!-- Standard Single File View -->
 				<div class="bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg overflow-hidden">
 					<div class="bg-vsc-light-bg-light dark:bg-vsc-bg-light px-4 py-2 border-b border-vsc-light-border dark:border-vsc-border-light">
-						<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{data.path}</span>
+						<span class="text-vsc-light-text-secondary dark:text-vsc-text-secondary text-sm">{pageData.path}</span>
 					</div>
 					
-					{#if data.isMarkdownRendered}
+					{#if pageData.isMarkdownRendered}
 						<!-- Rendered Markdown Content -->
 						<div class="p-4 lg:p-6">
 							<div class="prose prose-invert max-w-none">
-								{@html data.content}
+								{@html pageData.content}
 							</div>
 						</div>
 					{:else}
 						<!-- Raw Code Content -->
 						<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0"><code 
 							bind:this={codeElement}
-							class="{getLanguageClass(data.extension)} block p-3 lg:p-4 overflow-x-auto text-xs lg:text-sm"
-						>{data.content}</code></pre>
+							class="{getLanguageClass(pageData.extension)} block p-3 lg:p-4 overflow-x-auto text-xs lg:text-sm"
+						>{pageData.content}</code></pre>
 					{/if}
 				</div>
 			{/if}
@@ -806,7 +455,7 @@
 						{mobileModalContent === 'code' ? '💻' : '📖'}
 					</span>
 					<span class="text-sm font-medium text-vsc-light-text-primary dark:text-vsc-text-primary">
-						{mobileModalContent === 'code' ? 'Code' : 'Documentation'}: {data.name}
+						{mobileModalContent === 'code' ? 'Code' : 'Documentation'}: {pageData.name}
 					</span>
 				</div>
 				<button 
@@ -823,12 +472,12 @@
 				{#if mobileModalContent === 'code'}
 					<pre class="!bg-vsc-light-bg-medium dark:!bg-vsc-bg-medium !border-0 !rounded-none m-0 h-full"><code 
 						bind:this={codeElement}
-						class="{getLanguageClass(data.extension)} block p-3 text-xs leading-relaxed"
-					>{data.content}</code></pre>
+						class="{getLanguageClass(pageData.extension)} block p-3 text-xs leading-relaxed"
+					>{pageData.content}</code></pre>
 				{:else if mobileModalContent === 'documentation'}
 					<div class="p-4">
 						<div class="prose prose-invert max-w-none">
-							{@html data.readmeContent}
+							{@html pageData.readmeContent}
 						</div>
 					</div>
 				{/if}
@@ -841,7 +490,7 @@
 						mobileModalContent = 'code';
 						// Highlight code after switching to code view
 						setTimeout(() => {
-							if (codeElement && data?.type === 'file') {
+							if (codeElement && pageData?.type === 'file') {
 								hljs.highlightElement(codeElement);
 							}
 						}, 50);
