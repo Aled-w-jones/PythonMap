@@ -1,0 +1,72 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import NotepadViewer from '../../components/NotepadViewer.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const notepads = await getCollection('notepads');
+  return notepads.map((notepad) => ({
+    params: { slug: notepad.data.id },
+    props: { notepad: notepad.data },
+  }));
+}
+
+const { notepad } = Astro.props;
+const title = `${notepad.title} - Notepad`;
+---
+
+<Layout 
+  title={title} 
+  description={notepad.description}
+  searchMode="collapsed"
+  pageType="notepad"
+>
+  <div class="flex flex-col h-full w-full">
+    <!-- Header -->
+    <header class="bg-vsc-bg-medium border-b border-vsc-border-light p-4 flex-shrink-0">
+      <nav class="mb-2">
+        <a href={import.meta.env.BASE_URL} class="text-vsc-accent-blue hover:underline mr-4">Home</a>
+        <a href={`${import.meta.env.BASE_URL}/notepads`} class="text-vsc-accent-blue hover:underline">← Notepads</a>
+      </nav>
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold text-vsc-text-primary mb-2">{notepad.title}</h1>
+          <p class="text-vsc-text-secondary">{notepad.description}</p>
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap gap-2">
+            {notepad.tags.map((tag: string) => (
+              <span class="px-2 py-1 bg-vsc-bg-light text-xs rounded text-vsc-text-secondary hover:bg-vsc-bg-dark transition-colors">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <div class="text-xs text-vsc-text-secondary">
+            <div class="flex gap-4">
+              <span>Author: <span class="text-vsc-text-primary">{notepad.author}</span></span>
+              <span>Updated: <span class="text-vsc-text-primary">{new Date(notepad.lastUpdated).toLocaleDateString()}</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <NotepadViewer notepad={notepad} showSplit={true} />
+
+    <!-- Footer -->
+    <footer class="bg-vsc-bg-medium border-t border-vsc-border-light p-3 text-xs text-vsc-text-secondary flex-shrink-0">
+      <div class="flex flex-col md:flex-row md:justify-between gap-2">
+        <div class="flex flex-wrap gap-4">
+          <span>File: <span class="text-vsc-text-primary font-mono">{notepad.filePath}</span></span>
+          {notepad.readmeFile && (
+            <span>README: <span class="text-vsc-text-primary font-mono">{notepad.readmeFile}</span></span>
+          )}
+        </div>
+        <div>
+          <span>Dependencies: <span class="text-vsc-text-primary">{notepad.dependencies.join(', ')}</span></span>
+        </div>
+      </div>
+    </footer>
+  </div>
+</Layout>

@@ -1,0 +1,49 @@
+{
+  "$ref": "#/definitions/scripts",
+  "definitions": {
+    "scripts": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "python",
+            "markdown",
+            "json",
+            "readme"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "processed": {
+          "type": "boolean"
+        },
+        "$schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "description",
+        "filePath",
+        "url"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

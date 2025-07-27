@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const title = "Python Script Notepad & Codebase Browser";
+const description = "A local-first static website for viewing Python scripts with syntax highlighting and annotations.";
+
+// Get featured notepads
+const notepads = await getCollection('notepads');
+const featuredNotepads = notepads.slice(0, 3);
+---
+
+<Layout 
+  title={title} 
+  description={description}
+  searchMode="full"
+  pageType="home"
+>
+  <div class="container mx-auto px-4 py-8 w-full">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+      <p class="text-xl text-vsc-text-secondary mb-8 max-w-3xl mx-auto">
+        A local-first static website for viewing Python scripts with syntax highlighting, annotations, and comprehensive codebase browsing.
+      </p>
+      
+      <!-- Quick Navigation -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <a href={`${import.meta.env.BASE_URL}/notepads`} class="group bg-vsc-bg-medium p-8 rounded-lg border border-vsc-border-light hover:border-vsc-accent-blue transition-all duration-300 hover:shadow-lg">
+          <div class="text-4xl mb-4">📔</div>
+          <h2 class="text-xl font-semibold mb-3 group-hover:text-vsc-accent-blue transition-colors">Notepads</h2>
+          <p class="text-vsc-text-secondary mb-4">Browse annotated Python scripts with syntax highlighting, walkthroughs, and documentation.</p>
+          <span class="text-vsc-accent-blue font-medium">View All Notepads →</span>
+        </a>
+        
+        <a href={`${import.meta.env.BASE_URL}/browser`} class="group bg-vsc-bg-medium p-8 rounded-lg border border-vsc-border-light hover:border-vsc-accent-blue transition-all duration-300 hover:shadow-lg">
+          <div class="text-4xl mb-4">🗂️</div>
+          <h2 class="text-xl font-semibold mb-3 group-hover:text-vsc-accent-blue transition-colors">Code Browser</h2>
+          <p class="text-vsc-text-secondary mb-4">Explore the codebase with VS Code-like file and folder navigation.</p>
+          <span class="text-vsc-accent-blue font-medium">Browse Code →</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Featured Notepads -->
+    {featuredNotepads.length > 0 && (
+      <section class="mb-12">
+        <h2 class="text-2xl font-bold mb-6 text-center">Featured Scripts</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {featuredNotepads.map((notepad) => (
+            <a href={`${import.meta.env.BASE_URL}/notepads/${notepad.data.id}`} class="group bg-vsc-bg-medium p-6 rounded-lg border border-vsc-border-light hover:border-vsc-accent-blue transition-all duration-300 hover:shadow-lg">
+              <h3 class="text-lg font-semibold mb-3 group-hover:text-vsc-accent-blue transition-colors">
+                {notepad.data.title}
+              </h3>
+              <p class="text-vsc-text-secondary mb-4 text-sm leading-relaxed">
+                {notepad.data.description.length > 120 
+                  ? notepad.data.description.substring(0, 120) + '...' 
+                  : notepad.data.description}
+              </p>
+              <div class="flex flex-wrap gap-2 mb-4">
+                {notepad.data.tags.slice(0, 3).map((tag) => (
+                  <span class="px-2 py-1 bg-vsc-bg-light text-xs rounded text-vsc-text-secondary">
+                    {tag}
+                  </span>
+                ))}
+                {notepad.data.tags.length > 3 && (
+                  <span class="px-2 py-1 bg-vsc-bg-light text-xs rounded text-vsc-text-secondary">
+                    +{notepad.data.tags.length - 3} more
+                  </span>
+                )}
+              </div>
+              <div class="text-xs text-vsc-text-secondary">
+                Updated: {new Date(notepad.data.lastUpdated).toLocaleDateString()}
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+  </div>
+</Layout>

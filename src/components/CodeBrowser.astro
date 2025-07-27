@@ -1,0 +1,234 @@
+---
+import { buildSearchIndex } from '../utils/search-index';
+
+interface Props {
+  currentPath?: string;
+}
+
+const { currentPath = '' } = Astro.props;
+
+// Build search index to get file structure
+const searchIndex = await buildSearchIndex();
+
+// Get directories and files for the current path
+const getDirectoryContents = (path: string) => {
+  const normalizedPath = path.replace(/^\/browser\/?/, '');
+  
+  // Get directories
+  const directories = searchIndex
+    .filter(item => item.type === 'readme' && item.title.startsWith('README -'))
+    .filter(item => {
+      const itemPath = item.url.replace('/browser/', '');
+      if (!normalizedPath) {
+        // Root level - show directories that don't contain subdirectories
+        return !itemPath.includes('/');
+      }
+      // Show subdirectories of current path
+      return itemPath.startsWith(normalizedPath + '/') && 
+             itemPath.slice(normalizedPath.length + 1).split('/').length === 1;
+    })
+    .map(item => ({
+      name: item.title.replace('README - ', ''),
+      path: item.url.replace('/browser/', ''),
+      description: item.description,
+      url: item.url
+    }));
+
+  // Get files
+  const files = searchIndex
+    .filter(item => item.type !== 'notepad' && !item.title.startsWith('README -'))
+    .filter(item => {
+      const itemPath = item.url.replace('/browser/', '');
+      if (!normalizedPath) {
+        // Root level - show files that don't contain subdirectories
+        return !itemPath.includes('/');
+      }
+      // Show files in current directory
+      const relativePath = itemPath.replace(normalizedPath + '/', '');
+      return itemPath.startsWith(normalizedPath + '/') && !relativePath.includes('/');
+    });
+
+  return { directories, files };
+};
+
+const { directories, files } = getDirectoryContents(currentPath);
+
+// Breadcrumb navigation
+const getBreadcrumbs = (path: string) => {
+  if (!path) return [];
+  
+  const parts = path.split('/').filter(Boolean);
+  const breadcrumbs = [];
+  let currentPath = '';
+  
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    breadcrumbs.push({
+      name: part,
+      path: currentPath,
+      url: `/browser/${currentPath}`
+    });
+  }
+  
+  return breadcrumbs;
+};
+
+const breadcrumbs = getBreadcrumbs(currentPath.replace(/^\/browser\/?/, ''));
+---
+
+<div class="flex flex-col h-full min-h-full">
+  <!-- Search Widget (Collapsed) -->
+  <div class="border-b border-vsc-border-light bg-vsc-bg-medium">
+    <div class="p-3">
+      <div class="relative max-w-md">
+        <input
+          type="text"
+          data-browser-search
+          placeholder="Search files..."
+          class="w-full bg-vsc-bg-dark border border-vsc-border-light rounded px-3 py-2 pl-8 text-sm text-vsc-text-primary placeholder-vsc-text-secondary focus:outline-none focus:border-vsc-accent-blue"
+        />
+        <div class="absolute left-2 top-1/2 transform -translate-y-1/2 text-vsc-text-secondary text-sm">
+          🔍
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex">
+    <!-- Center Content Area -->
+    <div class="flex-1 flex flex-col">
+      <!-- Breadcrumbs -->
+      <div class="p-4 border-b border-vsc-border-light bg-vsc-bg-medium">
+        <div class="text-sm">
+          <a href={`${import.meta.env.BASE_URL}/browser`} class="text-vsc-accent-blue hover:underline">Root</a>
+          {breadcrumbs.map((crumb, index) => (
+            <span>
+              <span class="text-vsc-text-secondary mx-1">/</span>
+              {index === breadcrumbs.length - 1 ? (
+                <span class="text-vsc-text-primary">{crumb.name}</span>
+              ) : (
+                <a href={`${import.meta.env.BASE_URL}/browser/${crumb.path}`} class="text-vsc-accent-blue hover:underline">{crumb.name}</a>
+              )}
+            </span>
+          ))}
+        </div>
+        
+        <!-- Up navigation -->
+        {currentPath && (
+          <div class="mt-2">
+            <a href={breadcrumbs.length > 1 ? `${import.meta.env.BASE_URL}/browser/${breadcrumbs[breadcrumbs.length - 2].path}` : `${import.meta.env.BASE_URL}/browser`} 
+               class="flex items-center gap-2 text-vsc-accent-blue hover:underline text-sm">
+              <span>←</span>
+              <span>Up</span>
+            </a>
+          </div>
+        )}
+      </div>
+      
+      <!-- File/Directory Listings in Center - Full Screen -->
+      <div class="flex-1 p-6 overflow-auto" style="min-height: calc(100vh - 300px);">
+        <!-- All Items Combined (No separate sections) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 auto-rows-max" data-all-items>
+          
+          <!-- Directories -->
+          {directories.map((dir) => (
+            <a href={`${import.meta.env.BASE_URL}/browser/${dir.path}`} class="flex flex-col items-center gap-3 p-6 rounded-lg border border-vsc-border-light hover:border-vsc-accent-blue bg-vsc-bg-medium hover:bg-vsc-bg-light text-vsc-text-primary hover:text-vsc-accent-blue transition-all duration-200 min-h-[120px] group">
+              <svg class="w-12 h-12 text-vsc-accent-blue group-hover:scale-110 transition-transform flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
+              </svg>
+              <div class="text-center min-w-0 w-full">
+                <div class="font-medium truncate text-sm">{dir.name}</div>
+                <div class="text-xs text-vsc-text-secondary truncate mt-1">folder</div>
+              </div>
+            </a>
+          ))}
+          
+          <!-- Files -->
+          {files.map((file) => (
+            <a href={`${import.meta.env.BASE_URL}${file.url}`} class="flex flex-col items-center gap-3 p-6 rounded-lg border border-vsc-border-light hover:border-vsc-accent-blue bg-vsc-bg-medium hover:bg-vsc-bg-light text-vsc-text-primary hover:text-vsc-accent-blue transition-all duration-200 min-h-[120px] group" data-file-item data-file-name={file.title.toLowerCase()}>
+              {file.type === 'python' && (
+                <svg class="w-12 h-12 text-green-400 group-hover:scale-110 transition-transform flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z"></path>
+                </svg>
+              )}
+              {file.type === 'json' && (
+                <svg class="w-12 h-12 text-yellow-400 group-hover:scale-110 transition-transform flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                </svg>
+              )}
+              {file.type === 'markdown' && (
+                <svg class="w-12 h-12 text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                </svg>
+              )}
+              {!['python', 'json', 'markdown'].includes(file.type) && (
+                <svg class="w-12 h-12 text-vsc-text-secondary group-hover:scale-110 transition-transform flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                </svg>
+              )}
+              <div class="text-center min-w-0 w-full">
+                <div class="font-medium truncate text-sm">{file.title}</div>
+                <div class="text-xs text-vsc-text-secondary capitalize mt-1">{file.type}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+        
+        <!-- Empty state -->
+        {directories.length === 0 && files.length === 0 && (
+          <div class="flex flex-col items-center justify-center h-64 text-center">
+            <svg class="w-16 h-16 text-vsc-text-secondary mb-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-vsc-text-primary mb-2">No files or directories</h3>
+            <p class="text-vsc-text-secondary">This directory is empty.</p>
+          </div>
+        )}
+      </div>
+      
+      <!-- Slot for additional content -->
+      <slot />
+    </div>
+  </div>
+</div>
+
+<script>
+  class CodeBrowser {
+    constructor() {
+      this.searchInput = document.querySelector('[data-browser-search]');
+      this.fileList = document.querySelector('[data-file-list]');
+      this.fileItems = document.querySelectorAll('[data-file-item]');
+      
+      this.init();
+    }
+    
+    init() {
+      if (this.searchInput) {
+        this.searchInput.addEventListener('input', () => this.filterFiles());
+      }
+    }
+    
+    filterFiles() {
+      const query = this.searchInput.value.toLowerCase().trim();
+      
+      // Filter both file items and directory items
+      const allItems = document.querySelectorAll('[data-file-item], [data-all-items] a');
+      allItems.forEach(item => {
+        const fileName = item.dataset.fileName || item.textContent.toLowerCase() || '';
+        const shouldShow = !query || fileName.includes(query);
+        
+        if (shouldShow) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+  }
+  
+  // Initialize when DOM is loaded
+  document.addEventListener('DOMContentLoaded', () => {
+    new CodeBrowser();
+  });
+</script>

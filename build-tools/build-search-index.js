@@ -8,9 +8,19 @@ async function buildSearchIndex() {
     const searchIndex = [];
     
     try {
-        // Load notepads metadata
-        const notepadsData = await readFile('data/notepads.json', 'utf-8');
-        const notepads = JSON.parse(notepadsData);
+        // Load notepads metadata from Astro content collection
+        const notepadsDir = 'src/content/notepads';
+        const notepadFiles = await readdir(notepadsDir);
+        const notepads = [];
+        
+        // Read all notepad JSON files
+        for (const file of notepadFiles) {
+            if (file.endsWith('.json')) {
+                const notepadData = await readFile(join(notepadsDir, file), 'utf-8');
+                const notepad = JSON.parse(notepadData);
+                notepads.push(notepad);
+            }
+        }
         
         // Index notepad content
         for (const notepad of notepads) {
@@ -34,23 +44,12 @@ async function buildSearchIndex() {
         // Index all files in scripts directory
         await indexDirectory('scripts', searchIndex);
         
-        // Write search index to both data directory and static directory
-        await writeFile('data/search_index.json', JSON.stringify(searchIndex, null, 2));
-        await writeFile('static/data/search_index.json', JSON.stringify(searchIndex, null, 2));
-        
-        // Note: notepads.json is now embedded at build time, no longer copied to static
-        // const notepadsFileData = await readFile('data/notepads.json', 'utf-8');
-        // await writeFile('static/data/notepads.json', notepadsFileData);
-        
-        // Create static files for script content and README files
-        await createStaticContentFiles(notepads);
-        
-        // Create static files for all indexed files (including JSON, etc.)
-        await createStaticFilesForAllIndexedFiles(searchIndex);
+        // Write search index to public directory (Astro static files)
+        await mkdir('public/data', { recursive: true });
+        await writeFile('public/data/search_index.json', JSON.stringify(searchIndex, null, 2));
         
         console.log(`Search index built with ${searchIndex.length} items`);
-        console.log('Notepads data embedded at build time (no static copy needed)');
-        console.log('Static content files created');
+        console.log('Search index written to public/data/search_index.json');
         
     } catch (error) {
         console.error('Error building search index:', error);
@@ -137,80 +136,6 @@ async function indexDirectory(dirPath, searchIndex, basePath = '') {
         }
     } catch (error) {
         console.warn(`Warning: Could not read directory ${dirPath}`);
-    }
-}
-
-async function createStaticContentFiles(notepads) {
-    try {
-        // Ensure directories exist
-        await mkdir('static/data/scripts', { recursive: true });
-        await mkdir('static/data/readmes', { recursive: true });
-        await mkdir('static/data/annotations', { recursive: true });
-        
-        for (const notepad of notepads) {
-            try {
-                // Create static file for script content
-                const content = await readFile(notepad.filePath, 'utf-8');
-                const scriptFileName = notepad.filePath.replace(/[\/\\]/g, '_') + '.txt';
-                await writeFile(`static/data/scripts/${scriptFileName}`, content);
-                
-                // Create static file for README if exists
-                if (notepad.readmeFile) {
-                    try {
-                        const readmeText = await readFile(notepad.readmeFile, 'utf-8');
-                        const readmeHtml = marked(readmeText);
-                        const readmeFileName = notepad.readmeFile.replace(/[\/\\]/g, '_') + '.html';
-                        await writeFile(`static/data/readmes/${readmeFileName}`, readmeHtml);
-                    } catch (readmeError) {
-                        console.warn(`Warning: Could not process README file ${notepad.readmeFile}`);
-                    }
-                }
-                
-                // Create static file for annotations if exists
-                if (notepad.annotationsFile) {
-                    try {
-                        const annotationsText = await readFile(notepad.annotationsFile, 'utf-8');
-                        const annotationsFileName = notepad.annotationsFile.replace(/[\/\\]/g, '_');
-                        await writeFile(`static/data/annotations/${annotationsFileName}`, annotationsText);
-                    } catch (annotationsError) {
-                        console.warn(`Warning: Could not process annotations file ${notepad.annotationsFile}`);
-                    }
-                }
-            } catch (error) {
-                console.warn(`Warning: Could not create static files for ${notepad.filePath}`);
-            }
-        }
-    } catch (error) {
-        console.error('Error creating static content files:', error);
-    }
-}
-
-async function createStaticFilesForAllIndexedFiles(searchIndex) {
-    try {
-        // Ensure directories exist
-        await mkdir('static/data/scripts', { recursive: true });
-        
-        // Process all indexed files that aren't already handled by createStaticContentFiles
-        for (const item of searchIndex) {
-            // Skip notepad entries (handled by createStaticContentFiles)
-            // Skip readme entries (also handled by createStaticContentFiles)
-            if (item.type === 'notepad' || item.type === 'readme') {
-                continue;
-            }
-            
-            // Handle other file types (json, python, javascript, markdown that aren't READMEs, etc.)
-            if (item.filePath && ['python', 'javascript', 'json', 'markdown', 'file'].includes(item.type)) {
-                try {
-                    const content = await readFile(item.filePath, 'utf-8');
-                    const staticFileName = item.filePath.replace(/[\/\\]/g, '_') + '.txt';
-                    await writeFile(`static/data/scripts/${staticFileName}`, content);
-                } catch (error) {
-                    console.warn(`Warning: Could not create static file for ${item.filePath}`);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error creating static files for indexed files:', error);
     }
 }
 

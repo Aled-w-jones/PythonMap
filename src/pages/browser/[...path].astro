@@ -1,0 +1,641 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CodeBrowser from '../../components/CodeBrowser.astro';
+import { processFile } from '../../utils/file-helpers';
+import { buildSearchIndex } from '../../utils/search-index';
+
+export async function getStaticPaths() {
+  const searchIndex = await buildSearchIndex();
+  
+  return searchIndex
+    .filter(item => item.type !== 'notepad')
+    .map((item) => {
+      const path = item.url.replace('/browser/', '');
+      return {
+        params: { path },
+        props: { 
+          item,
+          filePath: item.filePath,
+          fileType: item.type,
+          currentPath: path
+        },
+      };
+    });
+}
+
+const { item, filePath, fileType, currentPath } = Astro.props;
+
+// Process the file
+let processedFile = null;
+try {
+  processedFile = await processFile(filePath);
+} catch (error) {
+  console.error(`Error processing file ${filePath}:`, error);
+}
+
+// Check for associated README file for Python scripts
+let associatedReadme = null;
+let processedReadme = null;
+if (fileType === 'python' && item.title.endsWith('.py')) {
+  const baseName = item.title.replace('.py', '');
+  const searchIndex = await buildSearchIndex();
+  associatedReadme = searchIndex.find(indexItem => 
+    indexItem.type === 'markdown' && 
+    indexItem.title.toLowerCase().includes(baseName.toLowerCase()) && 
+    indexItem.title.toLowerCase().includes('readme')
+  );
+  
+  if (associatedReadme) {
+    try {
+      processedReadme = await processFile(associatedReadme.filePath);
+    } catch (error) {
+      console.warn(`Could not process README: ${associatedReadme.filePath}`);
+    }
+  }
+}
+
+const title = `${item.title} - Code Browser`;
+---
+
+<Layout 
+  title={title} 
+  description={item.description}
+  pageType="browser"
+>
+  {fileType === 'python' || fileType === 'markdown' || fileType === 'json' || fileType === 'javascript' ? (
+    <!-- Individual File View - No directory listing -->
+    <div class="flex flex-col h-full">
+      <!-- Breadcrumbs Navigation -->
+      <div class="p-4 border-b border-vsc-border-light bg-vsc-bg-medium">
+        <div class="text-sm">
+          <a href={`${import.meta.env.BASE_URL}/browser`} class="text-vsc-accent-blue hover:underline">Root</a>
+          {currentPath.split('/').filter(Boolean).map((part, index, parts) => {
+            const partPath = parts.slice(0, index + 1).join('/');
+            return (
+              <span>
+                <span class="text-vsc-text-secondary mx-1">/</span>
+                {index === parts.length - 1 ? (
+                  <span class="text-vsc-text-primary">{part}</span>
+                ) : (
+                  <a href={`${import.meta.env.BASE_URL}/browser/${partPath}`} class="text-vsc-accent-blue hover:underline">{part}</a>
+                )}
+              </span>
+            );
+          })}
+        </div>
+        
+        <!-- Up navigation -->
+        {currentPath && (() => {
+          const pathParts = currentPath.split('/').filter(Boolean);
+          const parentPath = pathParts.slice(0, -1).join('/');
+          return (
+            <div class="mt-2">
+              <a href={parentPath ? `${import.meta.env.BASE_URL}/browser/${parentPath}` : `${import.meta.env.BASE_URL}/browser`} 
+                 class="flex items-center gap-2 text-vsc-accent-blue hover:underline text-sm">
+                <span>←</span>
+                <span>Up</span>
+              </a>
+            </div>
+          );
+        })()}
+      </div>
+      
+      <!-- File Header -->
+      <header class="bg-vsc-bg-medium border-b border-vsc-border-light p-4 flex-shrink-0">
+        <div class="flex items-center justify-between mb-2">
+          <h1 class="text-xl font-bold text-vsc-text-primary">{item.title}</h1>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-1 bg-vsc-bg-light text-xs rounded text-vsc-text-secondary">
+              {fileType}
+            </span>
+            {processedFile?.language && (
+              <span class="px-2 py-1 bg-vsc-accent-blue text-xs rounded text-white">
+                {processedFile.language}
+              </span>
+            )}
+            <button 
+              data-copy-file
+              class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+              title="Copy file content to clipboard"
+            >
+              📋 Copy
+            </button>
+            {associatedReadme && (
+              <button 
+                data-toggle-docs
+                class="px-3 py-1 bg-vsc-accent-blue text-white text-xs rounded hover:bg-blue-600 transition-colors"
+              >
+                📚 Show Documentation
+              </button>
+            )}
+          </div>
+        </div>
+        <p class="text-vsc-text-secondary text-sm">{item.description}</p>
+        <div class="text-xs text-vsc-text-secondary mt-2 font-mono">
+          {filePath}
+        </div>
+      </header>
+
+      <!-- File Content - Split View -->
+      <div class="flex-1 overflow-hidden">
+        <div class="flex h-full" data-split-container>
+          <!-- Code Panel -->
+          <div class="flex-1 p-4 overflow-auto" data-code-panel>
+            {processedFile ? (
+              <div class="bg-vsc-bg-medium rounded-lg border border-vsc-border-light h-full flex flex-col">
+                <div class="bg-vsc-bg-light px-4 py-2 border-b border-vsc-border-light rounded-t-lg flex items-center justify-between">
+                  <span class="text-sm text-vsc-text-secondary font-mono">{item.title}</span>
+                  <div class="text-xs text-vsc-text-secondary">
+                    {processedFile.content ? `${processedFile.content.split('\n').length} lines` : ''}
+                  </div>
+                </div>
+                <div class="flex-1 overflow-auto">
+                  {processedFile.type === 'markdown' ? (
+                    <div class="p-4">
+                      <div class="prose prose-invert max-w-none">
+                        <div set:html={processedFile.html}></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="flex h-full overflow-hidden">
+                      <!-- Line Numbers -->
+                      <div class="bg-vsc-bg-dark text-vsc-text-secondary text-xs font-mono select-none border-r border-vsc-border-light flex-shrink-0 overflow-hidden" data-browser-line-numbers style="padding: 16px 8px 16px 16px; line-height: 1.25; min-width: 40px; scrollbar-width: none; -ms-overflow-style: none;">
+                        <!-- Line numbers will be populated here -->
+                      </div>
+                      <!-- Code Content - Single scroll container -->
+                      <div class="flex-1 overflow-auto" data-code-scroll-container style="padding: 16px 16px 16px 8px;">
+                        <pre class="text-sm" style="margin: 0; padding: 0; line-height: 1.25;"><code class="hljs language-{processedFile.language}" data-browser-code-content style="line-height: 1.25; display: block;" set:html={processedFile.html}></code></pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div class="bg-vsc-bg-medium rounded-lg border border-vsc-border-light p-8 text-center">
+                <div class="text-4xl mb-4">❌</div>
+                <h2 class="text-xl font-semibold mb-2 text-vsc-text-primary">Unable to Load File</h2>
+                <p class="text-vsc-text-secondary">The file content could not be processed or displayed.</p>
+                <div class="mt-4 text-sm text-vsc-text-secondary">
+                  File: <span class="font-mono">{filePath}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- Resizable Divider -->
+          {associatedReadme && processedReadme && (
+            <div class="w-1 bg-vsc-border-light hover:bg-vsc-accent-blue cursor-col-resize transition-colors relative group hidden" data-splitter>
+              <div class="absolute inset-y-0 -left-1 -right-1 group-hover:bg-vsc-accent-blue group-hover:bg-opacity-20"></div>
+            </div>
+          )}
+
+          <!-- Documentation Panel -->
+          {associatedReadme && processedReadme && (
+            <div class="flex-1 p-4 overflow-auto hidden" data-docs-panel>
+              <div class="bg-vsc-bg-medium rounded-lg border border-vsc-border-light h-full flex flex-col">
+                <div class="bg-vsc-bg-light px-4 py-2 border-b border-vsc-border-light rounded-t-lg">
+                  <span class="text-sm text-vsc-text-secondary font-mono">{associatedReadme.title}</span>
+                </div>
+                <div class="p-4 flex-1 overflow-auto">
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs text-vsc-text-secondary">Markdown Preview</span>
+                    <button 
+                      data-toggle-raw-md
+                      class="px-2 py-1 text-xs bg-vsc-bg-light border border-vsc-border-light rounded hover:bg-vsc-bg-medium transition-colors text-vsc-text-secondary"
+                    >
+                      📄 Raw
+                    </button>
+                  </div>
+                  <div data-md-preview class="vscode-markdown-preview">
+                    <div set:html={processedReadme.html}></div>
+                  </div>
+                  <div data-md-raw class="hidden">
+                    <pre class="text-sm bg-vsc-bg-dark p-4 rounded border border-vsc-border-light overflow-auto font-mono text-vsc-text-primary whitespace-pre-wrap">{processedReadme.content}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- File Footer -->
+      <footer class="bg-vsc-bg-medium border-t border-vsc-border-light p-3 text-xs text-vsc-text-secondary flex-shrink-0">
+        <div class="flex flex-col md:flex-row md:justify-between gap-2">
+          <div class="flex flex-wrap gap-4">
+            <span>Path: <span class="text-vsc-text-primary font-mono">{filePath}</span></span>
+            <span>Type: <span class="text-vsc-text-primary">{fileType}</span></span>
+          </div>
+          {processedFile?.content && (
+            <div class="flex gap-4">
+              <span>Size: <span class="text-vsc-text-primary">{new Blob([processedFile.content]).size} bytes</span></span>
+              <span>Lines: <span class="text-vsc-text-primary">{processedFile.content.split('\n').length}</span></span>
+            </div>
+          )}
+        </div>
+      </footer>
+    </div>
+  ) : (
+    <!-- Directory View - Show CodeBrowser with directory listing -->
+    <CodeBrowser currentPath={currentPath}>
+      <div class="text-center p-8">
+        <h2 class="text-lg text-vsc-text-primary">Directory View</h2>
+        <p class="text-vsc-text-secondary">Use the file browser above to navigate.</p>
+      </div>
+    </CodeBrowser>
+  )}
+</Layout>
+
+<style>
+  /* Line Numbers Styling for Browser */
+  [data-browser-line-numbers] {
+    min-width: 40px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.75rem;
+    /* Hide scrollbar but allow scrolling */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  /* Hide scrollbar for webkit browsers */
+  [data-browser-line-numbers]::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Use pre-formatted text for browser line numbers to match code exactly */
+  [data-browser-line-numbers] {
+    white-space: pre;
+    text-align: right;
+    padding-right: 8px;
+  }
+  
+  [data-browser-line-numbers] div:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Ensure browser code content has matching line height */
+  [data-browser-code-content] {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+
+  /* VS Code Markdown Preview Styles - Override Tailwind prose */
+  .vscode-markdown-preview {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    color: #d4d4d4 !important;
+    background-color: transparent !important;
+    max-width: none !important;
+  }
+
+  .vscode-markdown-preview h1,
+  .vscode-markdown-preview h2,
+  .vscode-markdown-preview h3,
+  .vscode-markdown-preview h4,
+  .vscode-markdown-preview h5,
+  .vscode-markdown-preview h6 {
+    font-weight: 600 !important;
+    margin-top: 24px !important;
+    margin-bottom: 16px !important;
+    color: #cccccc !important;
+    border-bottom: 1px solid #333333 !important;
+    padding-bottom: 8px !important;
+  }
+
+  .vscode-markdown-preview h1 {
+    font-size: 2em !important;
+    border-bottom-width: 2px !important;
+    border-bottom-color: #569cd6 !important;
+    color: #569cd6 !important;
+  }
+
+  .vscode-markdown-preview h2 {
+    font-size: 1.5em !important;
+    color: #4ec9b0 !important;
+  }
+
+  .vscode-markdown-preview h3 {
+    font-size: 1.25em !important;
+    color: #dcdcaa !important;
+  }
+
+  .vscode-markdown-preview p {
+    margin-bottom: 16px !important;
+    line-height: 1.6 !important;
+    color: #d4d4d4 !important;
+  }
+
+  .vscode-markdown-preview a {
+    color: #569cd6 !important;
+    text-decoration: none !important;
+  }
+
+  .vscode-markdown-preview a:hover {
+    text-decoration: underline !important;
+  }
+
+  .vscode-markdown-preview code {
+    background-color: #2d2d30 !important;
+    color: #cccccc !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace !important;
+    font-size: 85% !important;
+  }
+
+  .vscode-markdown-preview pre {
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  .vscode-markdown-preview pre code {
+    background: none;
+    padding: 0;
+    font-size: 13px;
+  }
+
+  .vscode-markdown-preview blockquote {
+    border-left: 4px solid #569cd6;
+    padding-left: 16px;
+    margin: 16px 0;
+    color: #b0b0b0;
+    font-style: italic;
+    background-color: rgba(86, 156, 214, 0.1);
+    padding: 8px 16px;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .vscode-markdown-preview ul,
+  .vscode-markdown-preview ol {
+    margin: 16px 0;
+    padding-left: 32px;
+  }
+
+  .vscode-markdown-preview li {
+    margin: 4px 0;
+    line-height: 1.6;
+  }
+
+  .vscode-markdown-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    border: 1px solid #3e3e42;
+  }
+
+  .vscode-markdown-preview th,
+  .vscode-markdown-preview td {
+    border: 1px solid #3e3e42;
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .vscode-markdown-preview th {
+    background-color: #2d2d30;
+    font-weight: 600;
+    color: #cccccc;
+  }
+
+  .vscode-markdown-preview tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  .vscode-markdown-preview hr {
+    border: none;
+    border-top: 2px solid #3e3e42;
+    margin: 24px 0;
+  }
+
+  .vscode-markdown-preview strong {
+    font-weight: 600;
+    color: #cccccc;
+  }
+
+  .vscode-markdown-preview em {
+    font-style: italic;
+    color: #b0b0b0;
+  }
+</style>
+
+<script>
+  // Generate line numbers for browser code view with synchronized scrolling
+  function generateBrowserLineNumbers() {
+    const codeContent = document.querySelector('[data-browser-code-content]');
+    const lineNumbers = document.querySelector('[data-browser-line-numbers]');
+    const codeScrollContainer = document.querySelector('[data-code-scroll-container]');
+    
+    if (!codeContent || !lineNumbers) return;
+    
+    setTimeout(() => {
+      // Get the actual text content
+      const textContent = codeContent.textContent || codeContent.innerText || '';
+      
+      // Split into lines
+      const lines = textContent.split('\n');
+      
+      // Adjust for trailing empty line
+      let actualLineCount = lines.length;
+      if (lines[lines.length - 1] === '') {
+        actualLineCount = lines.length - 1;
+      }
+      
+      // Generate line numbers starting from 1
+      const lineNumbersHtml = [];
+      for (let i = 0; i < actualLineCount; i++) {
+        lineNumbersHtml.push(`${i + 1}\n`);
+      }
+      
+      // Set as plain text to match the code structure
+      lineNumbers.textContent = lineNumbersHtml.join('');
+      
+      // Make line numbers scrollable but hide scrollbar
+      lineNumbers.style.overflow = 'hidden';
+      lineNumbers.style.height = '100%';
+      
+      // Synchronize scrolling between line numbers and code content
+      if (codeScrollContainer) {
+        codeScrollContainer.addEventListener('scroll', () => {
+          lineNumbers.scrollTop = codeScrollContainer.scrollTop;
+        });
+      }
+      
+      console.log(`Browser - Generated ${actualLineCount} line numbers with synchronized scrolling`);
+    }, 100);
+  }
+
+  // Always initialize line numbers for any file with code content
+  document.addEventListener('DOMContentLoaded', () => {
+    generateBrowserLineNumbers();
+  });
+</script>
+
+{associatedReadme && processedReadme && (
+  <script>
+    class DocumentationToggle {
+      constructor() {
+        this.toggleButton = document.querySelector('[data-toggle-docs]');
+        this.codePanel = document.querySelector('[data-code-panel]');
+        this.docsPanel = document.querySelector('[data-docs-panel]');
+        this.splitter = document.querySelector('[data-splitter]');
+        this.splitContainer = document.querySelector('[data-split-container]');
+        this.isDocsVisible = false;
+        
+        this.init();
+      }
+      
+      init() {
+        if (this.toggleButton) {
+          this.toggleButton.addEventListener('click', () => this.toggleDocumentation());
+        }
+        
+        this.initSplitter();
+      }
+      
+      toggleDocumentation() {
+        this.isDocsVisible = !this.isDocsVisible;
+        
+        if (this.isDocsVisible) {
+          // Show documentation panel
+          this.docsPanel.classList.remove('hidden');
+          this.splitter.classList.remove('hidden');
+          this.toggleButton.textContent = '📚 Hide Documentation';
+          this.toggleButton.classList.add('bg-red-600');
+          this.toggleButton.classList.remove('bg-vsc-accent-blue');
+        } else {
+          // Hide documentation panel
+          this.docsPanel.classList.add('hidden');
+          this.splitter.classList.add('hidden');
+          this.toggleButton.textContent = '📚 Show Documentation';
+          this.toggleButton.classList.remove('bg-red-600');
+          this.toggleButton.classList.add('bg-vsc-accent-blue');
+        }
+      }
+      
+      initSplitter() {
+        if (!this.splitter || !this.codePanel || !this.docsPanel) return;
+        
+        let isResizing = false;
+        let startX = 0;
+        let startLeftWidth = 0;
+        
+        const onMouseDown = (e) => {
+          isResizing = true;
+          startX = e.clientX;
+          startLeftWidth = this.codePanel.getBoundingClientRect().width;
+          
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          
+          e.preventDefault();
+        };
+        
+        const onMouseMove = (e) => {
+          if (!isResizing) return;
+          
+          const dx = e.clientX - startX;
+          const containerWidth = this.splitContainer.getBoundingClientRect().width;
+          const newLeftWidth = startLeftWidth + dx;
+          const minWidth = 300;
+          const maxWidth = containerWidth - minWidth - 4;
+          
+          if (newLeftWidth >= minWidth && newLeftWidth <= maxWidth) {
+            const leftPercentage = (newLeftWidth / containerWidth) * 100;
+            const rightPercentage = 100 - leftPercentage - 0.2;
+            
+            this.codePanel.style.flex = `0 0 ${leftPercentage}%`;
+            this.docsPanel.style.flex = `0 0 ${rightPercentage}%`;
+          }
+        };
+        
+        const onMouseUp = () => {
+          isResizing = false;
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+        
+        this.splitter.addEventListener('mousedown', onMouseDown);
+      }
+      
+      initRawMarkdownToggle() {
+        const toggleButton = document.querySelector('[data-toggle-raw-md]');
+        const previewDiv = document.querySelector('[data-md-preview]');
+        const rawDiv = document.querySelector('[data-md-raw]');
+        
+        if (toggleButton && previewDiv && rawDiv) {
+          toggleButton.addEventListener('click', () => {
+            const isRawVisible = !rawDiv.classList.contains('hidden');
+            
+            if (isRawVisible) {
+              // Show preview, hide raw
+              rawDiv.classList.add('hidden');
+              previewDiv.classList.remove('hidden');
+              toggleButton.textContent = '📄 Raw';
+              toggleButton.title = 'Show raw markdown';
+            } else {
+              // Show raw, hide preview
+              previewDiv.classList.add('hidden');
+              rawDiv.classList.remove('hidden');
+              toggleButton.textContent = '👁️ Preview';
+              toggleButton.title = 'Show markdown preview';
+            }
+          });
+        }
+      }
+      
+      initCopyToClipboard() {
+        const copyButton = document.querySelector('[data-copy-file]');
+        if (copyButton) {
+          copyButton.addEventListener('click', async () => {
+            try {
+              // Get the file content from the code element
+              const codeElement = document.querySelector('[data-code-panel] pre code');
+              if (codeElement) {
+                const content = codeElement.textContent || codeElement.innerText;
+                await navigator.clipboard.writeText(content);
+                
+                // Visual feedback
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '✅ Copied!';
+                copyButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                copyButton.classList.add('bg-green-800');
+                
+                setTimeout(() => {
+                  copyButton.textContent = originalText;
+                  copyButton.classList.remove('bg-green-800');
+                  copyButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                }, 2000);
+              }
+            } catch (err) {
+              // Fallback for older browsers
+              console.error('Could not copy to clipboard:', err);
+              copyButton.textContent = '❌ Failed';
+              setTimeout(() => {
+                copyButton.textContent = '📋 Copy';
+              }, 2000);
+            }
+          });
+        }
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      const docToggle = new DocumentationToggle();
+      docToggle.initRawMarkdownToggle();
+      docToggle.initCopyToClipboard();
+    });
+  </script>
+)}

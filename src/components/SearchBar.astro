@@ -1,0 +1,338 @@
+---
+interface Props {
+  mode?: 'full' | 'collapsed';
+  searchIndex?: any[];
+}
+
+const { mode = 'full', searchIndex = [] } = Astro.props;
+
+// Extract unique tags from search index
+const availableTags = [...new Set(
+  searchIndex
+    .flatMap(item => item.tags || [])
+    .sort()
+)];
+---
+
+<div class="search-container" data-search-mode={mode}>
+  {mode === 'collapsed' ? (
+    <!-- Collapsed Search for Notepad Pages -->
+    <div class="w-full max-w-2xl mx-auto relative">
+      <button 
+        data-search-toggle
+        class="w-full bg-vsc-light-bg-light dark:bg-vsc-bg-light border border-vsc-light-border dark:border-vsc-border-light rounded-lg px-4 py-2 text-vsc-light-text-secondary dark:text-vsc-text-secondary hover:bg-vsc-light-bg-medium dark:hover:bg-vsc-bg-medium transition-colors flex items-center justify-center gap-2"
+      >
+        <span class="text-sm">🔍 Search</span>
+        <span class="text-xs">Click to expand</span>
+      </button>
+      
+      <!-- Expanded State (hidden by default) -->
+      <div data-search-expanded class="hidden bg-vsc-light-bg-light dark:bg-vsc-bg-light border border-vsc-light-border dark:border-vsc-border-light rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-sm font-medium text-vsc-light-text-primary dark:text-vsc-text-primary">🔍 Search</span>
+          <button 
+            data-search-close
+            class="ml-auto text-vsc-light-text-secondary dark:text-vsc-text-secondary hover:text-vsc-light-text-primary dark:hover:text-vsc-text-primary text-sm"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="flex-1 relative">
+            <input
+              type="text"
+              data-search-input
+              placeholder="Search..."
+              class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded px-3 py-2 text-sm text-vsc-light-text-primary dark:text-vsc-text-primary placeholder-vsc-light-text-secondary dark:placeholder-vsc-text-secondary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue"
+            />
+          </div>
+          <div class="sm:w-32">
+            <select
+              data-search-tag
+              class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded px-3 py-2 text-sm text-vsc-light-text-primary dark:text-vsc-text-primary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue"
+            >
+              <option value="">All Tags</option>
+              {availableTags.map((tag) => (
+                <option value={tag}>{tag}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <!-- Full Search (Home Page) -->
+    <div class="w-full max-w-4xl mx-auto relative">
+      <!-- Search Controls -->
+      <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <!-- Search Input -->
+        <div class="flex-1 relative">
+          <div class="relative">
+            <input
+              type="text"
+              data-search-input
+              placeholder="Search scripts, files, and content..."
+              class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg px-4 py-3 pl-10 text-vsc-light-text-primary dark:text-vsc-text-primary placeholder-vsc-light-text-secondary dark:placeholder-vsc-text-secondary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue focus:ring-1 focus:ring-vsc-light-accent-blue dark:focus:ring-vsc-accent-blue"
+            />
+            <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-vsc-light-text-secondary dark:text-vsc-text-secondary">
+              🔍
+            </div>
+            <button
+              data-search-clear
+              class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-vsc-light-text-secondary dark:text-vsc-text-secondary hover:text-vsc-light-text-primary dark:hover:text-vsc-text-primary"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        
+        <!-- Tag Filter -->
+        <div class="md:w-64">
+          <select
+            data-search-tag
+            class="w-full bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg px-4 py-3 text-vsc-light-text-primary dark:text-vsc-text-primary focus:outline-none focus:border-vsc-light-accent-blue dark:focus:border-vsc-accent-blue focus:ring-1 focus:ring-vsc-light-accent-blue dark:focus:ring-vsc-accent-blue"
+          >
+            <option value="">All Tags</option>
+            {availableTags.map((tag) => (
+              <option value={tag}>{tag}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  <!-- Search Results -->
+  <div data-search-results class="hidden absolute top-full left-0 right-0 z-50 bg-vsc-light-bg-medium dark:bg-vsc-bg-medium border border-vsc-light-border dark:border-vsc-border-light rounded-lg shadow-xl max-h-96 overflow-y-auto">
+    <div data-search-results-content class="p-2">
+      <!-- Results will be populated by JavaScript -->
+    </div>
+  </div>
+  
+  <!-- Click outside to close results -->
+  <div data-search-overlay class="hidden fixed inset-0 z-40"></div>
+</div>
+
+<script>
+  // Search functionality
+  const searchIndex = JSON.parse(document.querySelector('[data-search-index]')?.textContent || '[]');
+  
+  class SearchBar {
+    constructor(container) {
+      this.container = container;
+      this.mode = container.dataset.searchMode;
+      this.searchInput = container.querySelector('[data-search-input]');
+      this.searchTag = container.querySelector('[data-search-tag]');
+      this.searchResults = container.querySelector('[data-search-results]');
+      this.searchResultsContent = container.querySelector('[data-search-results-content]');
+      this.searchOverlay = container.querySelector('[data-search-overlay]');
+      this.searchClear = container.querySelector('[data-search-clear]');
+      this.searchToggle = container.querySelector('[data-search-toggle]');
+      this.searchExpanded = container.querySelector('[data-search-expanded]');
+      this.searchClose = container.querySelector('[data-search-close]');
+      
+      this.init();
+    }
+    
+    init() {
+      // Event listeners
+      if (this.searchInput) {
+        this.searchInput.addEventListener('input', () => this.performSearch());
+      }
+      
+      if (this.searchTag) {
+        this.searchTag.addEventListener('change', () => this.performSearch());
+      }
+      
+      if (this.searchClear) {
+        this.searchClear.addEventListener('click', () => this.clearSearch());
+      }
+      
+      if (this.searchToggle) {
+        this.searchToggle.addEventListener('click', () => this.toggleExpanded());
+      }
+      
+      if (this.searchClose) {
+        this.searchClose.addEventListener('click', () => this.toggleExpanded());
+      }
+      
+      if (this.searchOverlay) {
+        this.searchOverlay.addEventListener('click', () => this.hideResults());
+      }
+    }
+    
+    performSearch() {
+      const query = this.searchInput?.value.toLowerCase().trim() || '';
+      const selectedTag = this.searchTag?.value || '';
+      
+      if (!query && !selectedTag) {
+        this.hideResults();
+        return;
+      }
+      
+      const results = searchIndex.filter(item => {
+        // Tag filter
+        if (selectedTag && (!item.tags || !item.tags.includes(selectedTag))) {
+          return false;
+        }
+        
+        // Text search
+        if (query) {
+          return (
+            item.title.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query) ||
+            (item.tags && item.tags.some(tag => tag.toLowerCase().includes(query)))
+          );
+        }
+        
+        return true;
+      }).slice(0, 20);
+      
+      this.displayResults(results);
+      this.showClearButton();
+    }
+    
+    displayResults(results) {
+      if (!this.searchResultsContent) return;
+      
+      if (results.length === 0) {
+        this.searchResultsContent.innerHTML = `
+          <div class="p-4 text-center text-vsc-light-text-secondary dark:text-vsc-text-secondary">
+            No results found
+          </div>
+        `;
+      } else {
+        this.searchResultsContent.innerHTML = `
+          <div class="text-xs text-vsc-light-text-secondary dark:text-vsc-text-secondary p-2 border-b border-vsc-light-border dark:border-vsc-border-light">
+            ${results.length} result${results.length !== 1 ? 's' : ''} found
+          </div>
+          ${results.map(result => this.renderResult(result)).join('')}
+        `;
+        
+        // Add click handlers to results
+        this.searchResultsContent.querySelectorAll('[data-result-url]').forEach(element => {
+          element.addEventListener('click', (e) => {
+            const url = e.currentTarget.dataset.resultUrl;
+            if (url) {
+              const baseUrl = document.querySelector('base')?.href || '';
+              const fullUrl = url.startsWith('/') ? baseUrl.replace(/\/$/, '') + url : url;
+              window.location.href = fullUrl;
+            }
+          });
+        });
+      }
+      
+      this.showResults();
+    }
+    
+    renderResult(result) {
+      const icon = this.getResultIcon(result.type);
+      return `
+        <button
+          data-result-url="${result.url}"
+          class="w-full text-left p-3 hover:bg-vsc-light-bg-light dark:hover:bg-vsc-bg-light transition-colors border-b border-vsc-light-border dark:border-vsc-border-light last:border-b-0"
+        >
+          <div class="flex items-start gap-3">
+            <span class="text-lg mt-0.5">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-vsc-light-text-primary dark:text-vsc-text-primary mb-1">
+                ${result.title}
+              </div>
+              <div class="text-sm text-vsc-light-text-secondary dark:text-vsc-text-secondary mb-2">
+                ${result.description}
+              </div>
+              ${result.tags ? `
+                <div class="flex flex-wrap gap-1 mt-2">
+                  ${result.tags.map(tag => `
+                    <span class="text-xs bg-vsc-light-bg-light dark:bg-vsc-bg-dark text-vsc-light-text-secondary dark:text-vsc-text-secondary px-2 py-1 rounded">
+                      ${tag}
+                    </span>
+                  `).join('')}
+                </div>
+              ` : ''}
+              <div class="text-xs text-vsc-light-text-secondary dark:text-vsc-text-secondary mt-1 opacity-75">
+                ${result.filePath || ''}
+              </div>
+            </div>
+          </div>
+        </button>
+      `;
+    }
+    
+    getResultIcon(type) {
+      switch (type) {
+        case 'notepad': return '📔';
+        case 'python': return '🐍';
+        case 'markdown': return '📝';
+        case 'readme': return '📖';
+        case 'javascript': return '📜';
+        default: return '📄';
+      }
+    }
+    
+    showResults() {
+      if (this.searchResults) {
+        this.searchResults.classList.remove('hidden');
+      }
+      if (this.searchOverlay) {
+        this.searchOverlay.classList.remove('hidden');
+      }
+    }
+    
+    hideResults() {
+      if (this.searchResults) {
+        this.searchResults.classList.add('hidden');
+      }
+      if (this.searchOverlay) {
+        this.searchOverlay.classList.add('hidden');
+      }
+    }
+    
+    showClearButton() {
+      if (this.searchClear && this.searchInput?.value) {
+        this.searchClear.classList.remove('hidden');
+      }
+    }
+    
+    clearSearch() {
+      if (this.searchInput) {
+        this.searchInput.value = '';
+      }
+      if (this.searchTag) {
+        this.searchTag.value = '';
+      }
+      if (this.searchClear) {
+        this.searchClear.classList.add('hidden');
+      }
+      this.hideResults();
+    }
+    
+    toggleExpanded() {
+      if (this.searchToggle && this.searchExpanded) {
+        this.searchToggle.classList.toggle('hidden');
+        this.searchExpanded.classList.toggle('hidden');
+        
+        if (!this.searchExpanded.classList.contains('hidden')) {
+          // Focus the input when expanded
+          const input = this.searchExpanded.querySelector('[data-search-input]');
+          if (input) {
+            setTimeout(() => input.focus(), 100);
+          }
+        } else {
+          this.hideResults();
+        }
+      }
+    }
+  }
+  
+  // Initialize search bars
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.search-container').forEach(container => {
+      new SearchBar(container);
+    });
+  });
+</script>
+
+<!-- Embed search index for JavaScript -->
+<script type="application/json" data-search-index set:html={JSON.stringify(searchIndex)}></script>

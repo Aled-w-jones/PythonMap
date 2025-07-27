@@ -1,0 +1,12 @@
+{
+  "id": "advanced_data_analytics",
+  "title": "Advanced Data Analytics Suite",
+  "description": "A powerful, all-in-one Python toolkit for comprehensive data analysis, visualization, and machine learning. Features automated EDA, intelligent data cleaning, beautiful visualizations, and AutoML capabilities.",
+  "filePath": "scripts/project_y/data_analyzer.py",
+  "readmeFile": "scripts/project_y/README.md",
+  "tags": ["data science", "machine learning", "visualization", "advanced", "pandas", "scikit-learn"],
+  "author": "PythonMap",
+  "lastUpdated": "2025-01-24T20:00:00Z",
+  "dependencies": ["pandas", "numpy", "matplotlib", "seaborn", "scikit-learn"],
+  "annotationsFile": null
+}

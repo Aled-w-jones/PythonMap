@@ -1,0 +1,15 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CodeBrowser from '../../components/CodeBrowser.astro';
+
+const title = "Code Browser";
+const description = "Explore the codebase with VS Code-like file and folder navigation.";
+---
+
+<Layout 
+  title={title} 
+  description={description}
+  pageType="browser"
+>
+  <CodeBrowser currentPath="" />
+</Layout>

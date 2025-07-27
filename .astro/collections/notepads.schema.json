@@ -1,0 +1,64 @@
+{
+  "$ref": "#/definitions/notepads",
+  "definitions": {
+    "notepads": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "readmeFile": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "author": {
+          "type": "string"
+        },
+        "lastUpdated": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "annotationsFile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "$schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "filePath",
+        "tags",
+        "author",
+        "lastUpdated",
+        "dependencies"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
