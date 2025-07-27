@@ -160,17 +160,17 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       <div class="flex-1 overflow-auto" data-code-scroll-container>
         <div class="flex">
           <!-- Line Numbers -->
-          <div class="bg-vsc-bg-dark text-vsc-text-secondary text-xs font-mono select-none border-r border-vsc-border-light flex-shrink-0" 
+          <div class="bg-vsc-bg-dark text-vsc-text-secondary font-mono select-none border-r border-vsc-border-light flex-shrink-0" 
                data-line-numbers 
-               style="padding: 16px 8px 16px 16px; line-height: 1.25; min-width: 48px; text-align: right; white-space: pre;">
+               style="padding: 16px 8px 16px 16px; min-width: 48px; text-align: right; white-space: pre; font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace; font-size: 14px; line-height: 1.5; letter-spacing: 0;">
             <!-- Line numbers will be populated here -->
           </div>
           <!-- Code Content -->
           <div class="flex-1" style="padding: 16px 16px 16px 8px; min-height: 100%;">
-            <pre class="text-xs relative" data-code-container style="margin: 0; padding: 0; line-height: 1.25; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;"><code 
+            <pre class="relative" data-code-container style="margin: 0; padding: 0; font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace; font-size: 14px; line-height: 1.5; letter-spacing: 0;"><code 
               class="hljs language-{processedScript.language}" 
               data-code-content
-              style="line-height: 1.25; display: block; font-family: inherit; font-size: inherit;"
+              style="line-height: 1.5; display: block; font-family: inherit; font-size: inherit; letter-spacing: 0;"
               set:html={processedScript.html}
             ></code></pre>
           </div>
@@ -569,40 +569,54 @@ if (!annotations && notepad.id === 'arcgis_utils') {
     letter-spacing: 0.5px !important;
   }
 
-  /* Line Numbers Styling */
+  /* CRITICAL FIX: Font loading and consistent metrics */
+  @font-face {
+    font-family: 'MonacoFixed';
+    src: local('Monaco'), local('Menlo'), local('Ubuntu Mono'), local('Consolas');
+    font-display: block; /* Prevent font swap that causes reflow */
+  }
+  
+  /* Line Numbers Styling - EXACT metrics per CLAUDE.md */
   [data-line-numbers] {
     min-width: 48px;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 12px;
-    line-height: 20px;
+    font-family: 'MonacoFixed', Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important; /* Exact value as per CLAUDE.md */
+    letter-spacing: 0 !important;
     white-space: pre;
     text-align: right;
     padding-right: 8px;
+    height: auto;
   }
   
   [data-line-numbers] div:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
   
-  /* Ensure code content has matching line height */
+  /* Ensure code content has EXACTLY matching metrics */
   [data-code-content] {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 12px;
-    line-height: 20px;
+    font-family: 'MonacoFixed', Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important; /* Must match line numbers exactly */
+    letter-spacing: 0 !important;
   }
   
   /* Fixed line height for all code elements */
   [data-code-container] {
-    line-height: 20px !important;
+    line-height: 1.5 !important;
+    font-size: 14px !important;
+    font-family: 'MonacoFixed', Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace !important;
   }
   
   [data-code-container] code {
-    line-height: 20px !important;
-    font-size: 12px !important;
+    line-height: 1.5 !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    letter-spacing: 0 !important;
   }
 
   /* Animated Notepad Styles */
@@ -1200,20 +1214,25 @@ if (!annotations && notepad.id === 'arcgis_utils') {
     highlightLinesDirectly(startLine, endLine, annotation) {
       if (!this.codeContent) return;
       
-      console.log(`SIMPLE HIGHLIGHTING: lines ${startLine}-${endLine} for annotation: ${annotation?.id}`);
+      console.log(`FONT-AWARE HIGHLIGHTING: lines ${startLine}-${endLine} for annotation: ${annotation?.id}`);
       
       // Get the actual text content to validate line numbers
       const textContent = this.codeContent.textContent || this.codeContent.innerText;
-      const actualLines = textContent.split('\n');
+      const actualLines = textContent.split(/\r?\n/); // Handle both CRLF and LF
       
       // Validate line range
       const validStartLine = Math.max(1, Math.min(startLine, actualLines.length));
       const validEndLine = Math.max(validStartLine, Math.min(endLine, actualLines.length));
       
       console.log(`Valid line range: ${validStartLine}-${validEndLine}`);
+      console.log(`Target line content: "${actualLines[validStartLine - 1]}"`);
       
       // Remove any existing highlights
       this.removeExistingHighlights();
+      
+      // Calculate EXACT line height using same method as line numbers
+      const exactLineHeight = this.calculateLineHeight();
+      console.log(`Using exact line height: ${exactLineHeight}px`);
       
       // Create a simple highlight overlay
       const highlightId = `highlight-${annotation?.id || 'temp'}`;
@@ -1223,12 +1242,13 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       highlightOverlay.setAttribute('data-line-start', validStartLine);
       highlightOverlay.setAttribute('data-line-end', validEndLine);
       
-      // Simple calculation for positioning
-      const lineHeight = 20; // Fixed line height for consistency
-      const topOffset = (validStartLine - 1) * lineHeight + 16; // 16px padding
-      const height = (validEndLine - validStartLine + 1) * lineHeight;
+      // PRECISE calculation using exact font metrics
+      const topOffset = (validStartLine - 1) * exactLineHeight + 16; // 16px container padding
+      const height = (validEndLine - validStartLine + 1) * exactLineHeight;
       
-      // Position the overlay
+      console.log(`Positioning highlight: top=${topOffset}px, height=${height}px`);
+      
+      // Position the overlay with exact measurements
       highlightOverlay.style.cssText = `
         position: absolute;
         top: ${topOffset}px;
@@ -1248,13 +1268,12 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       if (this.codeScrollContainer) {
         this.codeScrollContainer.style.position = 'relative';
         this.codeScrollContainer.appendChild(highlightOverlay);
-        console.log(`Created simple highlight for lines ${validStartLine}-${validEndLine}`);
+        console.log(`Created precise highlight for lines ${validStartLine}-${validEndLine} with exact metrics`);
       }
     }
     
     scrollToHighlight() {
-      console.log('=== scrollToHighlight called ===');
-      console.log('Scroll container:', this.codeScrollContainer);
+      console.log('=== FONT-AWARE SCROLL TO HIGHLIGHT ===');
       
       if (!this.codeScrollContainer) {
         console.error('No scroll container for scrolling');
@@ -1263,7 +1282,6 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       
       // Find the precise highlight overlay
       const highlightOverlay = document.querySelector('.walkthrough-precise-highlight');
-      console.log('Found precise highlight overlay:', highlightOverlay);
       
       if (!highlightOverlay) {
         console.error('No highlight overlay found for scrolling');
@@ -1276,19 +1294,18 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       
       console.log(`Scrolling to highlight for lines ${startLine}-${endLine}`);
       
-      // Calculate scroll position based on line numbers and line height
-      const codeElement = this.codeContent.querySelector('code') || this.codeContent;
-      const computedStyle = window.getComputedStyle(codeElement);
-      const lineHeight = parseFloat(computedStyle.lineHeight) || 20;
+      // Use EXACT same line height calculation as highlighting
+      const exactLineHeight = this.calculateLineHeight();
+      console.log(`Using exact line height for scroll: ${exactLineHeight}px`);
       
       // Calculate the top position of the highlighted area - scroll to TOP of highlight
-      const highlightTop = (startLine - 1) * lineHeight + 16; // Account for padding
+      const highlightTop = (startLine - 1) * exactLineHeight + 16; // Account for container padding
       
       // Add some padding above the highlight so it's not right at the top edge
-      const scrollPadding = lineHeight * 2; // Show 2 lines above the highlight
+      const scrollPadding = exactLineHeight * 2; // Show 2 lines above the highlight
       const scrollTop = Math.max(0, highlightTop - scrollPadding);
       
-      console.log(`Calculated scroll position: ${scrollTop} (highlight at ${highlightTop}, padding ${scrollPadding})`);
+      console.log(`Calculated precise scroll position: ${scrollTop} (highlight at ${highlightTop}, padding ${scrollPadding})`);
       
       // Smooth scroll to the position
       this.codeScrollContainer.scrollTo({
@@ -1296,7 +1313,7 @@ if (!annotations && notepad.id === 'arcgis_utils') {
         behavior: 'smooth'
       });
       
-      console.log(`Scrolled to position ${scrollTop} for lines ${startLine}-${endLine}`);
+      console.log(`Scrolled to exact position ${scrollTop} for lines ${startLine}-${endLine}`);
     }
     
     removeExistingHighlights() {
@@ -1662,59 +1679,76 @@ if (!annotations && notepad.id === 'arcgis_utils') {
       this.annotationNotepad.style.transform = 'scale(0.95)';
     }
     
+    calculateLineHeight() {
+      // CRITICAL: Calculate exact line height as per CLAUDE.md recommendations
+      const tempElement = document.createElement('div');
+      tempElement.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        letter-spacing: 0;
+        white-space: pre;
+        top: -9999px;
+      `;
+      tempElement.textContent = 'M';
+      document.body.appendChild(tempElement);
+      const height = tempElement.offsetHeight;
+      document.body.removeChild(tempElement);
+      return height;
+    }
+    
     generateLineNumbers() {
       if (!this.codeContent || !this.lineNumbers) return;
       
-      setTimeout(() => {
-        // Get the actual text content
-        const textContent = this.codeContent.textContent || this.codeContent.innerText || '';
-        
-        // Split into lines - be very careful about counting
-        const lines = textContent.split('\n');
-        
-        console.log('=== LINE NUMBER GENERATION DEBUG ===');
-        console.log('Raw text length:', textContent.length);
-        console.log('Number of lines from split:', lines.length);
-        console.log('First few lines:');
-        for (let i = 0; i < Math.min(10, lines.length); i++) {
-          console.log(`  [${i + 1}]: "${lines[i]}"`);
-        }
-        
-        // Handle empty last line properly
-        let actualLineCount = lines.length;
-        if (lines.length > 0 && lines[lines.length - 1] === '') {
-          actualLineCount = lines.length - 1;
-        }
-        
-        console.log('Final line count:', actualLineCount);
-        
-        // Generate line numbers with exact spacing to match code
-        const lineNumbersArray = [];
-        for (let i = 1; i <= actualLineCount; i++) {
-          lineNumbersArray.push(i.toString());
-        }
-        
-        // Join with newlines to match the code structure exactly
-        this.lineNumbers.textContent = lineNumbersArray.join('\n');
-        
-        // Verify alignment by checking both elements have same line height
-        const codeElement = this.codeContent.querySelector('code') || this.codeContent;
-        const codeStyle = window.getComputedStyle(codeElement);
-        const lineNumberStyle = window.getComputedStyle(this.lineNumbers);
-        
-        console.log('Code line height:', codeStyle.lineHeight);
-        console.log('Line numbers line height:', lineNumberStyle.lineHeight);
-        console.log('Code font size:', codeStyle.fontSize);
-        console.log('Line numbers font size:', lineNumberStyle.fontSize);
-        
-        // Ensure both have exactly the same styling
-        this.lineNumbers.style.lineHeight = codeStyle.lineHeight;
-        this.lineNumbers.style.fontSize = codeStyle.fontSize;
-        this.lineNumbers.style.fontFamily = codeStyle.fontFamily;
-        
-        console.log(`Generated ${actualLineCount} line numbers with perfect alignment`);
-        console.log('=====================================');
-      }, 150); // Longer delay to ensure code is fully rendered
+      // CRITICAL: Wait for fonts to load as per CLAUDE.md
+      document.fonts.ready.then(() => {
+        setTimeout(() => {
+          // Calculate exact line height
+          const exactLineHeight = this.calculateLineHeight();
+          console.log('=== FONT-AWARE LINE NUMBER GENERATION ===');
+          console.log('Calculated exact line height:', exactLineHeight + 'px');
+          
+          // Get the actual text content
+          const textContent = this.codeContent.textContent || this.codeContent.innerText || '';
+          
+          // Split into lines - handle CRLF vs LF properly
+          const lines = textContent.split(/\r?\n/);
+          
+          console.log('Total lines found:', lines.length);
+          console.log('First few lines:');
+          for (let i = 0; i < Math.min(5, lines.length); i++) {
+            console.log(`  [${i + 1}]: "${lines[i]}"`);
+          }
+          
+          // Handle empty last line properly
+          let actualLineCount = lines.length;
+          if (lines.length > 0 && lines[lines.length - 1] === '') {
+            actualLineCount = lines.length - 1;
+          }
+          
+          console.log('Final line count:', actualLineCount);
+          
+          // Generate line numbers with EXACT height matching
+          const lineNumbersHtml = [];
+          for (let i = 1; i <= actualLineCount; i++) {
+            lineNumbersHtml.push(`<div style="height: ${exactLineHeight}px; min-height: ${exactLineHeight}px; max-height: ${exactLineHeight}px; line-height: ${exactLineHeight}px;">${i}</div>`);
+          }
+          
+          // Set as HTML to ensure exact height control
+          this.lineNumbers.innerHTML = lineNumbersHtml.join('');
+          
+          // Apply exact metrics to ensure perfect alignment
+          this.lineNumbers.style.fontSize = '14px';
+          this.lineNumbers.style.lineHeight = '1.5';
+          this.lineNumbers.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", Consolas, monospace';
+          this.lineNumbers.style.letterSpacing = '0';
+          
+          console.log(`Generated ${actualLineCount} line numbers with exact ${exactLineHeight}px height`);
+          console.log('===========================================');
+        }, 50);
+      });
     }
     
     initCopyToClipboard() {
